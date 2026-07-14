@@ -1,36 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Like Real — Next.js 專案安裝步驟
 
-## Getting Started
+## 1. 建立 Next.js 專案
 
-First, run the development server:
+終端機（在你想放專案的資料夾）：
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+npx create-next-app@latest likereal-next
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+問答一路這樣選：
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+| 問題 | 選 |
+|---|---|
+| TypeScript? | **No** |
+| ESLint? | Yes |
+| Tailwind CSS? | **No** |
+| src/ directory? | **No** |
+| App Router? | **Yes** |
+| Turbopack? | Yes |
+| import alias? | **No**（用預設） |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+然後：
 
-## Learn More
+```
+cd likereal-next
+npm install @supabase/supabase-js
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 2. 覆蓋檔案
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+把這個資料夾裡的所有檔案，**照原本的資料夾結構**覆蓋到 `likereal-next` 裡。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+會覆蓋／新增這些：
 
-## Deploy on Vercel
+```
+likereal-next/
+├── .env.local                        ← 新增（金鑰，已幫你填好）
+├── jsconfig.json                     ← 覆蓋
+├── lib/
+│   ├── supabase.js                   ← 新增
+│   └── theme.js                      ← 新增
+├── components/
+│   └── ui.js                         ← 新增
+└── app/
+    ├── layout.js                     ← 覆蓋
+    ├── globals.css                   ← 覆蓋
+    ├── page.js                       ← 覆蓋
+    ├── HomeClient.js                 ← 新增
+    ├── sitemap.js                    ← 新增
+    ├── robots.js                     ← 新增
+    ├── admin/
+    │   └── page.js                   ← 新增
+    └── events/
+        └── [slug]/
+            ├── page.js               ← 新增
+            ├── EventClient.js        ← 新增
+            └── buy/
+                ├── page.js           ← 新增
+                └── BuyClient.js      ← 新增
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**注意：** `[slug]` 資料夾名稱要含中括號，這是 Next.js 的動態路由寫法。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+如果 create-next-app 產生了 `app/page.module.css`，可以直接刪掉，用不到。
+
+## 3. 啟動
+
+```
+npm run dev
+```
+
+瀏覽器開 http://localhost:3000
+
+- 首頁：活動列表
+- 活動頁：http://localhost:3000/events/interstitial
+- 後台：http://localhost:3000/admin
+- Sitemap：http://localhost:3000/sitemap.xml
+
+## 4. 後台登入
+
+用你在 Supabase 建的帳號密碼登入 `/admin`。
+
+## 5. 部署到 Vercel
+
+推上 GitHub 後，在 Vercel 匯入專案。
+
+**重要：** 在 Vercel 專案設定 → Environment Variables，加入這三個：
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://xabgfhkoufwdvlpaamha.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_xeD6pswTSGJG10sWLY6qKw_9i7-X7K2
+NEXT_PUBLIC_SITE_URL=https://你的網址.vercel.app
+```
+
+第三個要填你部署後拿到的實際網址（第一次部署完才知道，補上後重新 deploy 一次）。這個值會影響 SEO 的 canonical 網址和 sitemap，一定要填對。
+
+## 6. SEO 上線後要做的事
+
+1. 到 [Google Search Console](https://search.google.com/search-console) 新增你的網站
+2. 驗證方式選 HTML 標籤，把驗證碼貼到後台「SEO 設定 → Google Search Console 驗證碼」
+3. 提交 sitemap：輸入 `sitemap.xml`
+4. 想要流量數據的話，去 Google Analytics 開一個帳號，把 `G-XXXXXXXXXX` 貼到後台
