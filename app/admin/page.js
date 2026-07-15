@@ -20,9 +20,24 @@ const A = {
 };
 
 const ROLE_LABEL = { admin: "管理者", editor: "編輯者", staff: "驗票員" };
+
+// 所有可指派的權限模組
+const ALL_PERMS = [
+  { id: "dashboard", label: "儀表板" },
+  { id: "analytics", label: "銷售分析" },
+  { id: "events", label: "活動管理" },
+  { id: "orders", label: "訂單查看" },
+  { id: "members", label: "會員管理" },
+  { id: "tiers", label: "等級設定" },
+  { id: "refunds", label: "退票審核" },
+  { id: "seo", label: "SEO 設定" },
+  { id: "site", label: "場域設定" },
+  { id: "scanner", label: "驗票入場" },
+  { id: "staff", label: "帳號權限" },
+];
 const ROLE_PERMS = {
-  admin: ["dashboard", "events", "orders", "seo", "site", "scanner"],
-  editor: ["dashboard", "events", "orders", "seo", "site"],
+  admin: ["dashboard", "analytics", "events", "orders", "members", "tiers", "seo", "site", "scanner"],
+  editor: ["dashboard", "analytics", "events", "orders", "members", "seo", "site"],
   staff: ["scanner", "orders"],
 };
 
@@ -356,6 +371,10 @@ export default function Admin() {
   const [settings, setSettings] = useState({});
   const [banners, setBanners] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [tiers, setTiers] = useState([]);
+  const [refunds, setRefunds] = useState([]);
+  const [staffList, setStaffList] = useState([]);
   const [editing, setEditing] = useState(null);
   const [saved, setSaved] = useState("");
 
@@ -375,7 +394,11 @@ export default function Admin() {
     if (data?.is_active) {
       setUser(u);
       setStaff(data);
-      setPage(ROLE_PERMS[data.role][0]);
+      const perms = data.role === "admin"
+        ? ALL_PERMS.map((p) => p.id)
+        : (data.permissions || ROLE_PERMS[data.role] || []);
+      data._perms = perms;
+      setPage(perms[0] || "dashboard");
       await loadAll();
     } else {
       setLoginErr("此帳號沒有後台權限");
@@ -385,18 +408,26 @@ export default function Admin() {
   }
 
   async function loadAll() {
-    const [e, o, s, b, a] = await Promise.all([
+    const [e, o, s, b, a, m, t, rf, sf] = await Promise.all([
       supabase.from("events").select("*, tickets(*)").order("sort_order"),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
       supabase.from("site_settings").select("*").eq("id", 1).single(),
       supabase.from("banners").select("*").order("sort_order"),
       supabase.from("announcements").select("*").order("sort_order"),
+      supabase.from("members").select("*, member_tiers(name, color)").order("created_at", { ascending: false }),
+      supabase.from("member_tiers").select("*").order("level"),
+      supabase.from("refund_requests").select("*, orders(id, total, buyer_name, events(title))").order("requested_at", { ascending: false }),
+      supabase.from("staff").select("*").order("created_at"),
     ]);
     setEvents(e.data || []);
     setOrders(o.data || []);
     setSettings(s.data || {});
     setBanners(b.data || []);
     setAnnouncements(a.data || []);
+    setMembers(m.data || []);
+    setTiers(t.data || []);
+    setRefunds(rf.data || []);
+    setStaffList(sf.data || []);
   }
 
   async function login() {
@@ -562,14 +593,23 @@ export default function Admin() {
       </div>
     );
 
+  const myPerms =
+    staff.role === "admin"
+      ? ALL_PERMS.map((p) => p.id)
+      : staff._perms || staff.permissions || ROLE_PERMS[staff.role] || [];
   const NAV = [
     { id: "dashboard", label: "儀表板" },
+    { id: "analytics", label: "銷售分析" },
     { id: "events", label: "活動管理" },
     { id: "orders", label: "訂單查看" },
+    { id: "members", label: "會員管理" },
+    { id: "tiers", label: "等級設定" },
+    { id: "refunds", label: "退票審核" },
     { id: "seo", label: "SEO 設定" },
     { id: "site", label: "場域設定" },
     { id: "scanner", label: "驗票入場" },
-  ].filter((n) => ROLE_PERMS[staff.role]?.includes(n.id));
+    { id: "staff", label: "帳號權限" },
+  ].filter((n) => myPerms.includes(n.id));
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: A.bg }}>
@@ -702,6 +742,21 @@ export default function Admin() {
         )}
         {page === "scanner" && (
           <ScannerPage orders={orders} events={events} onCheckIn={checkIn} />
+        )}
+        {page === "analytics" && (
+          <AnalyticsPage orders={orders} events={events} />
+        )}
+        {page === "members" && (
+          <MembersPage members={members} orders={orders} tiers={tiers} reload={loadAll} flash={flash} />
+        )}
+        {page === "tiers" && (
+          <TiersPage tiers={tiers} reload={loadAll} flash={flash} />
+        )}
+        {page === "refunds" && (
+          <RefundsPage refunds={refunds} reload={loadAll} flash={flash} staffId={staff.id} />
+        )}
+        {page === "staff" && (
+          <StaffPage staffList={staffList} reload={loadAll} flash={flash} allPerms={ALL_PERMS} />
         )}
       </main>
 
@@ -2050,6 +2105,1056 @@ function ScannerPage({ orders, events, onCheckIn }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// 銷售分析
+// ═══════════════════════════════════════════
+function AnalyticsPage({ orders, events }) {
+  const [range, setRange] = useState("month"); // day week month custom
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [filterEvent, setFilterEvent] = useState("all");
+  const [sortBy, setSortBy] = useState("revenue"); // revenue count
+  const [statusFilter, setStatusFilter] = useState("paid"); // paid all
+
+  // 只算有效訂單（付款完成，或全部）
+  const base = orders.filter((o) =>
+    statusFilter === "paid" ? o.status === "paid" : true
+  );
+
+  // 依區間過濾
+  const now = new Date();
+  function inRange(dateStr) {
+    const d = new Date(dateStr);
+    if (range === "day") {
+      return d.toDateString() === now.toDateString();
+    }
+    if (range === "week") {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(now.getDate() - 7);
+      return d >= weekAgo;
+    }
+    if (range === "month") {
+      return (
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth()
+      );
+    }
+    if (range === "custom") {
+      if (!customStart || !customEnd) return true;
+      const s = new Date(customStart);
+      const e = new Date(customEnd);
+      e.setHours(23, 59, 59);
+      return d >= s && d <= e;
+    }
+    return true;
+  }
+
+  let filtered = base.filter((o) => inRange(o.created_at));
+  if (filterEvent !== "all") {
+    filtered = filtered.filter((o) => o.event_id === filterEvent);
+  }
+
+  const totalRevenue = filtered.reduce((a, o) => a + (o.total || 0), 0);
+  const totalCount = filtered.length;
+  const totalTickets = filtered.reduce(
+    (a, o) => a + (Array.isArray(o.seats) ? o.seats.length : 0),
+    0
+  );
+  const avgOrder = totalCount ? Math.round(totalRevenue / totalCount) : 0;
+
+  // 依活動彙總
+  const byEvent = {};
+  filtered.forEach((o) => {
+    const key = o.event_id || "unknown";
+    if (!byEvent[key]) byEvent[key] = { revenue: 0, count: 0, tickets: 0 };
+    byEvent[key].revenue += o.total || 0;
+    byEvent[key].count += 1;
+    byEvent[key].tickets += Array.isArray(o.seats) ? o.seats.length : 0;
+  });
+  const evName = (id) => events.find((e) => e.id === id)?.title || "未知活動";
+  let eventRows = Object.entries(byEvent).map(([id, v]) => ({
+    id,
+    name: evName(id),
+    ...v,
+  }));
+  eventRows.sort((a, b) =>
+    sortBy === "revenue" ? b.revenue - a.revenue : b.count - a.count
+  );
+
+  // 每日趨勢（區間內）
+  const byDay = {};
+  filtered.forEach((o) => {
+    const day = new Date(o.created_at).toLocaleDateString("zh-TW", {
+      month: "numeric",
+      day: "numeric",
+    });
+    byDay[day] = (byDay[day] || 0) + (o.total || 0);
+  });
+  const dayEntries = Object.entries(byDay).slice(-14);
+  const maxDay = Math.max(1, ...dayEntries.map(([, v]) => v));
+
+  const RANGE_LABEL = { day: "今日", week: "近 7 天", month: "本月", custom: "自訂" };
+
+  return (
+    <div>
+      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>銷售分析</h1>
+
+      {/* 控制列 */}
+      <div
+        style={{
+          background: A.surface,
+          border: `1px solid ${A.border}`,
+          borderRadius: 6,
+          padding: 16,
+          marginBottom: 16,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 16,
+          alignItems: "flex-end",
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: A.sub, marginBottom: 6 }}>
+            時間區間
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {["day", "week", "month", "custom"].map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                style={{
+                  padding: "7px 14px",
+                  border: `1px solid ${range === r ? A.primary : A.border}`,
+                  background: range === r ? A.primary : "#fff",
+                  color: range === r ? "#fff" : A.sub,
+                  fontSize: 12,
+                  fontWeight: range === r ? 700 : 400,
+                  cursor: "pointer",
+                  borderRadius: 3,
+                }}
+              >
+                {RANGE_LABEL[r]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {range === "custom" && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              type="date"
+              value={customStart}
+              onChange={(e) => setCustomStart(e.target.value)}
+              style={{
+                padding: "7px 10px",
+                border: `1px solid ${A.border}`,
+                borderRadius: 3,
+                fontSize: 12,
+              }}
+            />
+            <span style={{ color: A.muted }}>–</span>
+            <input
+              type="date"
+              value={customEnd}
+              onChange={(e) => setCustomEnd(e.target.value)}
+              style={{
+                padding: "7px 10px",
+                border: `1px solid ${A.border}`,
+                borderRadius: 3,
+                fontSize: 12,
+              }}
+            />
+          </div>
+        )}
+
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: A.sub, marginBottom: 6 }}>
+            篩選活動
+          </div>
+          <select
+            value={filterEvent}
+            onChange={(e) => setFilterEvent(e.target.value)}
+            style={{
+              padding: "7px 10px",
+              border: `1px solid ${A.border}`,
+              borderRadius: 3,
+              fontSize: 12,
+              background: "#fff",
+              minWidth: 140,
+            }}
+          >
+            <option value="all">全部活動</option>
+            {events.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.title}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: A.sub, marginBottom: 6 }}>
+            訂單狀態
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{
+              padding: "7px 10px",
+              border: `1px solid ${A.border}`,
+              borderRadius: 3,
+              fontSize: 12,
+              background: "#fff",
+            }}
+          >
+            <option value="paid">僅已付款</option>
+            <option value="all">全部訂單</option>
+          </select>
+        </div>
+      </div>
+
+      {/* 數字卡 */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))",
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
+        {[
+          { label: `${RANGE_LABEL[range]}營收`, value: `NT$${totalRevenue.toLocaleString()}`, color: A.accent },
+          { label: "訂單數", value: totalCount, color: A.green },
+          { label: "售出票數", value: totalTickets, color: A.yellow },
+          { label: "平均客單價", value: `NT$${avgOrder.toLocaleString()}`, color: "#7C3AED" },
+        ].map((s) => (
+          <div
+            key={s.label}
+            style={{
+              background: A.surface,
+              border: `1px solid ${A.border}`,
+              borderRadius: 6,
+              padding: 18,
+            }}
+          >
+            <div style={{ fontSize: 24, fontWeight: 800, color: s.color }}>
+              {s.value}
+            </div>
+            <div style={{ fontSize: 11, color: A.sub, marginTop: 3 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 每日趨勢長條圖 */}
+      {dayEntries.length > 0 && (
+        <div
+          style={{
+            background: A.surface,
+            border: `1px solid ${A.border}`,
+            borderRadius: 6,
+            padding: 18,
+            marginBottom: 20,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 16 }}>
+            每日營收趨勢
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: 6,
+              height: 140,
+            }}
+          >
+            {dayEntries.map(([day, v]) => (
+              <div
+                key={day}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <div style={{ fontSize: 9, color: A.sub }}>
+                  {v >= 1000 ? `${Math.round(v / 1000)}k` : v}
+                </div>
+                <div
+                  style={{
+                    width: "100%",
+                    height: `${(v / maxDay) * 100}%`,
+                    minHeight: 2,
+                    background: A.accent,
+                    borderRadius: "2px 2px 0 0",
+                  }}
+                />
+                <div style={{ fontSize: 9, color: A.muted }}>{day}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 各活動排行 */}
+      <div
+        style={{
+          background: A.surface,
+          border: `1px solid ${A.border}`,
+          borderRadius: 6,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            padding: "12px 16px",
+            borderBottom: `1px solid ${A.border}`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 700 }}>各活動銷售排行</div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {[
+              ["revenue", "依營收"],
+              ["count", "依訂單數"],
+            ].map(([v, l]) => (
+              <button
+                key={v}
+                onClick={() => setSortBy(v)}
+                style={{
+                  padding: "5px 12px",
+                  border: `1px solid ${sortBy === v ? A.primary : A.border}`,
+                  background: sortBy === v ? A.primary : "#fff",
+                  color: sortBy === v ? "#fff" : A.sub,
+                  fontSize: 11,
+                  fontWeight: sortBy === v ? 700 : 400,
+                  cursor: "pointer",
+                  borderRadius: 3,
+                }}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+        {eventRows.length === 0 && (
+          <div style={{ textAlign: "center", padding: 40, color: A.muted, fontSize: 13 }}>
+            此區間沒有銷售資料
+          </div>
+        )}
+        {eventRows.map((row, i) => (
+          <div
+            key={row.id}
+            style={{
+              padding: "12px 16px",
+              borderBottom: i < eventRows.length - 1 ? `1px solid ${A.border}` : "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <div
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: "50%",
+                background: i === 0 ? "#FFD70022" : A.bg,
+                color: i === 0 ? "#B8860B" : A.sub,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 12,
+                fontWeight: 700,
+                flexShrink: 0,
+              }}
+            >
+              {i + 1}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{row.name}</div>
+              <div style={{ fontSize: 11, color: A.sub }}>
+                {row.count} 筆訂單 · {row.tickets} 張票
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 15, fontWeight: 800 }}>
+                NT${row.revenue.toLocaleString()}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// 會員管理
+// ═══════════════════════════════════════════
+function MembersPage({ members, orders, tiers, reload, flash }) {
+  const [q, setQ] = useState("");
+  const [selected, setSelected] = useState(null);
+  const [adjust, setAdjust] = useState("");
+  const [adjustNote, setAdjustNote] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const list = members.filter(
+    (m) =>
+      !q ||
+      m.name?.includes(q) ||
+      m.email?.includes(q) ||
+      m.phone?.includes(q)
+  );
+
+  const memberOrders = (mid) => orders.filter((o) => o.member_id === mid);
+
+  async function doAdjust() {
+    const amt = parseInt(adjust);
+    if (!amt || !selected) return;
+    setBusy(true);
+    const newBalance = selected.points + amt;
+    await supabase
+      .from("members")
+      .update({ points: newBalance })
+      .eq("id", selected.id);
+    await supabase.from("point_logs").insert({
+      member_id: selected.id,
+      type: amt > 0 ? "earn" : "redeem",
+      amount: amt,
+      balance: newBalance,
+      note: adjustNote || "後台手動調整",
+    });
+    setBusy(false);
+    setAdjust("");
+    setAdjustNote("");
+    setSelected(null);
+    await reload();
+    flash("點數已調整");
+  }
+
+  return (
+    <div>
+      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>會員管理</h1>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        {[
+          { label: "會員總數", value: members.length, color: A.accent },
+          {
+            label: "總持有點數",
+            value: members.reduce((a, m) => a + m.points, 0).toLocaleString(),
+            color: A.green,
+          },
+          {
+            label: "待發放點數",
+            value: members.reduce((a, m) => a + m.pending_points, 0).toLocaleString(),
+            color: A.yellow,
+          },
+        ].map((s) => (
+          <div
+            key={s.label}
+            style={{
+              background: A.surface,
+              border: `1px solid ${A.border}`,
+              borderRadius: 6,
+              padding: 16,
+            }}
+          >
+            <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>
+              {s.value}
+            </div>
+            <div style={{ fontSize: 11, color: A.sub }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="搜尋姓名、Email、手機..."
+        style={{
+          width: "100%",
+          maxWidth: 360,
+          padding: "9px 12px",
+          border: `1px solid ${A.border}`,
+          borderRadius: 3,
+          fontSize: 13,
+          outline: "none",
+          marginBottom: 14,
+        }}
+      />
+
+      {list.length === 0 && (
+        <div style={{ textAlign: "center", padding: 40, color: A.muted, fontSize: 13 }}>
+          {members.length === 0 ? "還沒有會員" : "找不到符合的會員"}
+        </div>
+      )}
+
+      {list.map((m) => (
+        <div
+          key={m.id}
+          style={{
+            background: A.surface,
+            border: `1px solid ${A.border}`,
+            borderRadius: 6,
+            padding: 14,
+            marginBottom: 8,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{m.name}</span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: 20,
+                    background: (m.member_tiers?.color || A.muted) + "22",
+                    color: m.member_tiers?.color || A.sub,
+                  }}
+                >
+                  {m.member_tiers?.name || "一般會員"}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: A.sub }}>
+                {m.email} {m.phone && `· ${m.phone}`}
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: A.accent }}>
+                {m.points} 點
+              </div>
+              <div style={{ fontSize: 10, color: A.muted }}>
+                待發 {m.pending_points} · 累計消費 ${m.total_spent.toLocaleString()}
+              </div>
+            </div>
+            <button
+              onClick={() => setSelected(selected?.id === m.id ? null : m)}
+              style={{
+                padding: "6px 12px",
+                border: `1px solid ${A.border}`,
+                borderRadius: 3,
+                background: selected?.id === m.id ? A.primary : "#fff",
+                color: selected?.id === m.id ? "#fff" : A.text,
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              調整
+            </button>
+          </div>
+
+          {selected?.id === m.id && (
+            <div
+              style={{
+                marginTop: 12,
+                paddingTop: 12,
+                borderTop: `1px solid ${A.border}`,
+              }}
+            >
+              <div style={{ fontSize: 11, color: A.sub, marginBottom: 8 }}>
+                手動調整點數（正數增加、負數扣除）
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <input
+                  type="number"
+                  value={adjust}
+                  onChange={(e) => setAdjust(e.target.value)}
+                  placeholder="例：+100 或 -50"
+                  style={{
+                    width: 120,
+                    padding: "8px 10px",
+                    border: `1px solid ${A.border}`,
+                    borderRadius: 3,
+                    fontSize: 13,
+                    outline: "none",
+                  }}
+                />
+                <input
+                  value={adjustNote}
+                  onChange={(e) => setAdjustNote(e.target.value)}
+                  placeholder="調整原因（選填）"
+                  style={{
+                    flex: 1,
+                    padding: "8px 10px",
+                    border: `1px solid ${A.border}`,
+                    borderRadius: 3,
+                    fontSize: 13,
+                    outline: "none",
+                  }}
+                />
+                <Btn onClick={doAdjust} disabled={busy || !adjust}>
+                  確認
+                </Btn>
+              </div>
+              <div style={{ fontSize: 11, color: A.sub, marginTop: 8 }}>
+                消費紀錄：{memberOrders(m.id).length} 筆訂單
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// 等級設定
+// ═══════════════════════════════════════════
+function TiersPage({ tiers, reload, flash }) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+        <h1 style={{ fontSize: 18, fontWeight: 700 }}>會員等級設定</h1>
+        <Btn
+          onClick={async () => {
+            const maxLevel = Math.max(0, ...tiers.map((t) => t.level));
+            await supabase.from("member_tiers").insert({
+              name: "新等級",
+              level: maxLevel + 1,
+              min_spent: 0,
+              earn_per: 50,
+              redeem_cap: 30,
+              color: "#697485",
+            });
+            await reload();
+            flash("已新增等級");
+          }}
+        >
+          ＋ 新增等級
+        </Btn>
+      </div>
+
+      <div
+        style={{
+          background: "#FFFBEB",
+          border: "1px solid #FFE0A3",
+          borderRadius: 6,
+          padding: 12,
+          fontSize: 12,
+          color: "#8A5A00",
+          marginBottom: 16,
+          lineHeight: 1.7,
+        }}
+      >
+        修改後會員會依「累計消費」自動套用對應等級。「每 N 元 1 點」的數字越小，回饋越多。「折抵上限」是單筆訂單最多可用點數折抵的比例。
+      </div>
+
+      {tiers.map((t) => (
+        <TierRow key={t.id} tier={t} reload={reload} flash={flash} />
+      ))}
+    </div>
+  );
+}
+
+function TierRow({ tier, reload, flash }) {
+  const [t, setT] = useState(tier);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    await supabase
+      .from("member_tiers")
+      .update({
+        name: t.name,
+        level: t.level,
+        min_spent: t.min_spent,
+        earn_per: t.earn_per,
+        redeem_cap: t.redeem_cap,
+        color: t.color,
+      })
+      .eq("id", t.id);
+    setBusy(false);
+    await reload();
+    flash("等級已儲存");
+  }
+
+  async function del() {
+    if (!confirm(`確定刪除「${t.name}」？`)) return;
+    await supabase.from("member_tiers").delete().eq("id", t.id);
+    await reload();
+    flash("等級已刪除");
+  }
+
+  return (
+    <div
+      style={{
+        background: A.surface,
+        border: `1px solid ${A.border}`,
+        borderRadius: 6,
+        padding: 16,
+        marginBottom: 10,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <input
+          type="color"
+          value={t.color}
+          onChange={(e) => setT({ ...t, color: e.target.value })}
+          style={{ width: 32, height: 32, border: "none", cursor: "pointer", background: "none" }}
+        />
+        <input
+          value={t.name}
+          onChange={(e) => setT({ ...t, name: e.target.value })}
+          style={{
+            fontSize: 15,
+            fontWeight: 700,
+            border: `1px solid ${A.border}`,
+            borderRadius: 3,
+            padding: "6px 10px",
+            outline: "none",
+            width: 140,
+          }}
+        />
+        <div style={{ flex: 1 }} />
+        <Btn small onClick={save} disabled={busy}>儲存</Btn>
+        <Btn small variant="danger" onClick={del}>刪除</Btn>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+        <TierField
+          label="等級順序"
+          value={t.level}
+          onChange={(v) => setT({ ...t, level: parseInt(v) || 1 })}
+        />
+        <TierField
+          label="升級門檻（累計消費）"
+          value={t.min_spent}
+          onChange={(v) => setT({ ...t, min_spent: parseInt(v) || 0 })}
+        />
+        <TierField
+          label="每 N 元 1 點"
+          value={t.earn_per}
+          onChange={(v) => setT({ ...t, earn_per: parseInt(v) || 1 })}
+        />
+        <TierField
+          label="折抵上限 %"
+          value={t.redeem_cap}
+          onChange={(v) => setT({ ...t, redeem_cap: parseInt(v) || 0 })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TierField({ label, value, onChange }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, color: A.sub, marginBottom: 4 }}>{label}</div>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "8px 10px",
+          border: `1px solid ${A.border}`,
+          borderRadius: 3,
+          fontSize: 13,
+          outline: "none",
+        }}
+      />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// 退票審核
+// ═══════════════════════════════════════════
+function RefundsPage({ refunds, reload, flash, staffId }) {
+  const [tab, setTab] = useState("pending");
+  const list = refunds.filter((r) =>
+    tab === "all" ? true : r.status === tab
+  );
+
+  async function handle(refund, decision) {
+    const note = decision === "approved" ? "同意退票" : "婉拒退票";
+    await supabase
+      .from("refund_requests")
+      .update({
+        status: decision,
+        admin_note: note,
+        handled_at: new Date().toISOString(),
+        handled_by: staffId,
+      })
+      .eq("id", refund.id);
+
+    if (decision === "approved") {
+      // 訂單標記退款、釋放座位
+      await supabase.from("orders").update({ status: "refunded" }).eq("id", refund.order_id);
+      await supabase.rpc("release_seats", { p_order_id: refund.order_id });
+    }
+    await reload();
+    flash(decision === "approved" ? "已核准退票" : "已婉拒退票");
+  }
+
+  const pendingCount = refunds.filter((r) => r.status === "pending").length;
+
+  return (
+    <div>
+      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>退票審核</h1>
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+        {[
+          ["pending", `待處理 ${pendingCount > 0 ? `(${pendingCount})` : ""}`],
+          ["approved", "已核准"],
+          ["rejected", "已婉拒"],
+          ["all", "全部"],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            style={{
+              padding: "7px 14px",
+              border: `1px solid ${tab === id ? A.primary : A.border}`,
+              background: tab === id ? A.primary : "#fff",
+              color: tab === id ? "#fff" : A.sub,
+              fontSize: 12,
+              fontWeight: tab === id ? 700 : 400,
+              cursor: "pointer",
+              borderRadius: 3,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {list.length === 0 && (
+        <div style={{ textAlign: "center", padding: 40, color: A.muted, fontSize: 13 }}>
+          沒有{tab === "pending" ? "待處理的" : ""}退票申請
+        </div>
+      )}
+
+      {list.map((r) => (
+        <div
+          key={r.id}
+          style={{
+            background: A.surface,
+            border: `1px solid ${A.border}`,
+            borderRadius: 6,
+            padding: 16,
+            marginBottom: 10,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>
+                {r.orders?.events?.title || "（活動已刪除）"}
+              </div>
+              <div style={{ fontSize: 12, color: A.sub }}>
+                {r.orders?.buyer_name} · 訂單 {r.order_id} · NT${r.orders?.total?.toLocaleString()}
+              </div>
+            </div>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "3px 10px",
+                borderRadius: 20,
+                height: "fit-content",
+                background:
+                  r.status === "pending" ? "#FFF8E8" : r.status === "approved" ? "#E8FFF0" : "#FFF1F0",
+                color:
+                  r.status === "pending" ? A.yellow : r.status === "approved" ? A.green : A.red,
+              }}
+            >
+              {r.status === "pending" ? "待處理" : r.status === "approved" ? "已核准" : "已婉拒"}
+            </span>
+          </div>
+
+          {r.reason && (
+            <div
+              style={{
+                fontSize: 12,
+                color: A.text,
+                background: A.bg,
+                padding: "8px 12px",
+                borderRadius: 4,
+                marginBottom: 10,
+              }}
+            >
+              退票原因：{r.reason}
+            </div>
+          )}
+
+          <div style={{ fontSize: 11, color: A.muted, marginBottom: 10 }}>
+            申請時間：{new Date(r.requested_at).toLocaleString("zh-TW")}
+          </div>
+
+          {r.status === "pending" && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <Btn variant="accent" small onClick={() => handle(r, "approved")}>
+                核准退票（釋放座位）
+              </Btn>
+              <Btn variant="danger" small onClick={() => handle(r, "rejected")}>
+                婉拒
+              </Btn>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// 帳號權限管理
+// ═══════════════════════════════════════════
+function StaffPage({ staffList, reload, flash, allPerms }) {
+  return (
+    <div>
+      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>帳號權限</h1>
+      <div
+        style={{
+          background: "#FFFBEB",
+          border: "1px solid #FFE0A3",
+          borderRadius: 6,
+          padding: 12,
+          fontSize: 12,
+          color: "#8A5A00",
+          marginBottom: 16,
+          lineHeight: 1.7,
+        }}
+      >
+        勾選每個帳號可進入的功能模組。「管理者」角色永遠擁有全部權限（包含此頁），無法被移除。新增帳號需先在 Supabase 的 Authentication 建立使用者，再回此頁設定權限。
+      </div>
+
+      {staffList.map((s) => (
+        <StaffRow key={s.id} member={s} reload={reload} flash={flash} allPerms={allPerms} />
+      ))}
+    </div>
+  );
+}
+
+function StaffRow({ member, reload, flash, allPerms }) {
+  const isAdmin = member.role === "admin";
+  const [perms, setPerms] = useState(
+    isAdmin ? allPerms.map((p) => p.id) : member.permissions || []
+  );
+  const [active, setActive] = useState(member.is_active);
+  const [busy, setBusy] = useState(false);
+
+  function toggle(id) {
+    if (isAdmin) return;
+    setPerms((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  }
+
+  async function save() {
+    setBusy(true);
+    await supabase
+      .from("staff")
+      .update({ permissions: perms, is_active: active })
+      .eq("id", member.id);
+    setBusy(false);
+    await reload();
+    flash("權限已更新");
+  }
+
+  return (
+    <div
+      style={{
+        background: A.surface,
+        border: `1px solid ${A.border}`,
+        borderRadius: 6,
+        padding: 16,
+        marginBottom: 10,
+        opacity: active ? 1 : 0.6,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>
+              {member.name || member.email}
+            </span>
+            {isAdmin && (
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: "2px 8px",
+                  borderRadius: 20,
+                  background: "#EBF2FF",
+                  color: A.accent,
+                }}
+              >
+                管理者
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: A.sub }}>{member.email}</div>
+        </div>
+        {!isAdmin && (
+          <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={active}
+              onChange={(e) => setActive(e.target.checked)}
+              style={{ accentColor: A.green }}
+            />
+            啟用
+          </label>
+        )}
+        {!isAdmin && (
+          <Btn small onClick={save} disabled={busy}>
+            儲存
+          </Btn>
+        )}
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
+          gap: 8,
+        }}
+      >
+        {allPerms.map((perm) => {
+          const on = perms.includes(perm.id);
+          return (
+            <label
+              key={perm.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 10px",
+                border: `1px solid ${on ? A.accent : A.border}`,
+                background: on ? A.accentL : "#fff",
+                borderRadius: 4,
+                fontSize: 12,
+                cursor: isAdmin ? "not-allowed" : "pointer",
+                color: on ? A.accent : A.sub,
+                fontWeight: on ? 600 : 400,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={on}
+                disabled={isAdmin}
+                onChange={() => toggle(perm.id)}
+                style={{ accentColor: A.accent }}
+              />
+              {perm.label}
+            </label>
+          );
+        })}
+      </div>
     </div>
   );
 }

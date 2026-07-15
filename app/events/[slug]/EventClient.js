@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { C } from "@/lib/theme";
 import { Navbar, EventVisual, Footer, BannerCarousel } from "@/components/ui";
-import { getSold } from "@/lib/theme";
+import { getSeats } from "@/lib/supabase";
 
 function useCountdown(target) {
   const calc = () => {
@@ -142,8 +142,19 @@ export default function EventClient({ event: ev, catLabel }) {
     (a, t) => a + t.seat_rows * t.seat_cols,
     0
   );
+  const [soldByTicket, setSoldByTicket] = useState({});
+  useEffect(() => {
+    (async () => {
+      const map = {};
+      for (const t of tickets) {
+        const rows = await getSeats(t.id);
+        map[t.id] = rows.filter((s) => s.status !== "available").length;
+      }
+      setSoldByTicket(map);
+    })();
+  }, []);
   const totalSold = tickets.reduce(
-    (a, t) => a + getSold(ev.id, t.id, t.seat_rows, t.seat_cols).size,
+    (a, t) => a + (soldByTicket[t.id] || 0),
     0
   );
   const soldPct = totalSeats ? Math.round((totalSold / totalSeats) * 100) : 0;
@@ -564,8 +575,7 @@ export default function EventClient({ event: ev, catLabel }) {
               活動票券
             </h2>
             {tickets.map((t, i) => {
-              const sold = getSold(ev.id, t.id, t.seat_rows, t.seat_cols);
-              const rem = t.seat_rows * t.seat_cols - sold.size;
+              const rem = t.seat_rows * t.seat_cols - (soldByTicket[t.id] || 0);
               return (
                 <div
                   key={t.id}

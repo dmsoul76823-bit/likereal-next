@@ -2,9 +2,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { C, CATEGORIES } from "@/lib/theme";
+import { useMember } from "@/components/MemberContext";
 
 // ══ Navbar ══
 export function Navbar({ search, setSearch }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div
       style={{
@@ -23,7 +25,7 @@ export function Navbar({ search, setSearch }) {
           padding: "0 16px",
           display: "flex",
           alignItems: "center",
-          height: 54,
+          height: 56,
           gap: 14,
         }}
       >
@@ -39,8 +41,9 @@ export function Navbar({ search, setSearch }) {
         >
           LIKE <span style={{ fontWeight: 200 }}>REAL</span>
         </Link>
+
         {setSearch && (
-          <div style={{ flex: 1, maxWidth: 400, position: "relative" }}>
+          <div className="lr-search" style={{ flex: 1, maxWidth: 400, position: "relative" }}>
             <span
               style={{
                 position: "absolute",
@@ -60,9 +63,9 @@ export function Navbar({ search, setSearch }) {
               style={{
                 width: "100%",
                 padding: "8px 11px 8px 30px",
-                borderRadius: 2,
+                borderRadius: 3,
                 border: `1px solid ${C.border}`,
-                fontSize: 12,
+                fontSize: 13,
                 outline: "none",
                 color: C.text,
                 background: C.primaryL,
@@ -70,20 +73,170 @@ export function Navbar({ search, setSearch }) {
             />
           </div>
         )}
+
         <div style={{ flex: 1 }} />
-        <div
+
+        {/* 桌機版右側 */}
+        <div className="lr-nav-desktop">
+          <NavbarAuth />
+        </div>
+
+        {/* 手機版漢堡 */}
+        <button
+          className="lr-nav-mobile-btn"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="選單"
           style={{
-            flexShrink: 0,
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
+            display: "none",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: 22,
+            color: C.text,
+            padding: 4,
           }}
         >
-          <span style={{ fontSize: 11, color: C.sub, cursor: "pointer" }}>
-            我的票券
-          </span>
+          {menuOpen ? "✕" : "☰"}
+        </button>
+      </div>
+
+      {/* 手機版展開選單 */}
+      {menuOpen && (
+        <div
+          className="lr-nav-mobile-menu"
+          style={{
+            borderTop: `1px solid ${C.border}`,
+            padding: "12px 16px",
+            background: "#fff",
+          }}
+        >
+          <MobileMenu />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MobileMenu() {
+  const ctx = useMember();
+  const member = ctx?.member;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {member ? (
+        <>
           <Link
-            href="/admin"
+            href="/account"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "10px 0",
+              fontSize: 15,
+              fontWeight: 600,
+              color: C.text,
+            }}
+          >
+            {member.name} 的會員中心
+            <span
+              style={{
+                background: C.accentL,
+                color: C.accent,
+                padding: "3px 10px",
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+            >
+              {member.points} 點
+            </span>
+          </Link>
+          <Link href="/account" style={{ fontSize: 14, color: C.sub, padding: "6px 0" }}>
+            我的訂單 / 電子票券
+          </Link>
+        </>
+      ) : (
+        <div style={{ display: "flex", gap: 10 }}>
+          <Link
+            href="/login"
+            style={{
+              flex: 1,
+              textAlign: "center",
+              padding: "10px",
+              border: `1px solid ${C.border}`,
+              borderRadius: 3,
+              fontSize: 14,
+              color: C.text,
+            }}
+          >
+            登入
+          </Link>
+          <Link
+            href="/login"
+            style={{
+              flex: 1,
+              textAlign: "center",
+              padding: "10px",
+              background: C.primary,
+              color: "#fff",
+              borderRadius: 3,
+              fontSize: 14,
+              fontWeight: 600,
+            }}
+          >
+            註冊
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══ Navbar 登入狀態 ══
+function NavbarAuth() {
+  const ctx = useMember();
+  const member = ctx?.member;
+  return (
+    <div
+      style={{
+        flexShrink: 0,
+        display: "flex",
+        gap: 10,
+        alignItems: "center",
+      }}
+    >
+      {member ? (
+        <Link
+          href="/account"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 12,
+            color: C.text,
+            fontWeight: 600,
+          }}
+        >
+          <span
+            style={{
+              background: C.accentL,
+              color: C.accent,
+              padding: "3px 10px",
+              borderRadius: 20,
+              fontSize: 11,
+              fontWeight: 700,
+            }}
+          >
+            {member.points} 點
+          </span>
+          {member.name}
+        </Link>
+      ) : (
+        <>
+          <Link href="/login" style={{ fontSize: 12, color: C.sub }}>
+            登入
+          </Link>
+          <Link
+            href="/login"
             style={{
               background: C.primary,
               color: "#fff",
@@ -93,10 +246,10 @@ export function Navbar({ search, setSearch }) {
               fontWeight: 600,
             }}
           >
-            登入
+            註冊
           </Link>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

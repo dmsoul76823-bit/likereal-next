@@ -1,5 +1,6 @@
 import { getSettings, SITE_URL } from "@/lib/supabase";
 import Script from "next/script";
+import { MemberProvider } from "@/components/MemberContext";
 import "./globals.css";
 
 export async function generateMetadata() {
@@ -56,7 +57,7 @@ export default async function RootLayout({ children }) {
         />
       </head>
       <body>
-        {children}
+        <MemberProvider>{children}</MemberProvider>
         {s.ga_id && (
           <>
             <Script
