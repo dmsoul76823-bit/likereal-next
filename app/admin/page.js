@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { supabase, createStaffAccount } from "@/lib/supabase";
 import { C, CATEGORIES } from "@/lib/theme";
 
 const A = {
@@ -362,6 +362,7 @@ export default function Admin() {
   const [staff, setStaff] = useState(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState("dashboard");
+  const [navOpen, setNavOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [loginErr, setLoginErr] = useState("");
@@ -613,7 +614,38 @@ export default function Admin() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: A.bg }}>
+      {/* 手機頂欄 */}
+      <div className="lr-admin-topbar">
+        <button
+          onClick={() => setNavOpen(true)}
+          aria-label="開啟選單"
+          style={{
+            background: "none",
+            border: "none",
+            color: "#fff",
+            fontSize: 22,
+            cursor: "pointer",
+            padding: 4,
+          }}
+        >
+          ☰
+        </button>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>
+          LIKE <span style={{ fontWeight: 200 }}>REAL</span>
+        </div>
+        <div style={{ width: 30 }} />
+      </div>
+
+      {/* 手機遮罩 */}
+      {navOpen && (
+        <div
+          className="lr-admin-overlay"
+          onClick={() => setNavOpen(false)}
+        />
+      )}
+
       <aside
+        className={navOpen ? "lr-admin-aside lr-admin-aside-open" : "lr-admin-aside"}
         style={{
           width: 200,
           background: A.primary,
@@ -623,6 +655,7 @@ export default function Admin() {
         }}
       >
         <div
+          className="lr-admin-logo"
           style={{
             padding: "20px 16px",
             borderBottom: "1px solid rgba(255,255,255,0.08)",
@@ -645,7 +678,7 @@ export default function Admin() {
           {NAV.map((n) => (
             <button
               key={n.id}
-              onClick={() => setPage(n.id)}
+              onClick={() => { setPage(n.id); setNavOpen(false); }}
               style={{
                 width: "100%",
                 padding: "11px 12px",
@@ -695,7 +728,7 @@ export default function Admin() {
         </div>
       </aside>
 
-      <main style={{ flex: 1, padding: 24, overflowY: "auto", maxHeight: "100vh" }}>
+      <main className="lr-admin-main" style={{ flex: 1, padding: 24, overflowY: "auto", maxHeight: "100vh" }}>
         {saved && (
           <div
             style={{
@@ -818,6 +851,7 @@ function Dashboard({ events, orders }) {
       {events.map((ev) => (
         <div
           key={ev.id}
+          className="lr-admin-card"
           style={{
             background: A.surface,
             border: `1px solid ${A.border}`,
@@ -890,6 +924,7 @@ function EventsPage({ events, onNew, onEdit, onDelete }) {
   return (
     <div>
       <div
+        className="lr-admin-head"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -903,6 +938,7 @@ function EventsPage({ events, onNew, onEdit, onDelete }) {
       {events.map((ev) => (
         <div
           key={ev.id}
+          className="lr-admin-card"
           style={{
             background: A.surface,
             border: `1px solid ${A.border}`,
@@ -1455,6 +1491,7 @@ function OrdersPage({ orders, events }) {
       {list.map((o) => (
         <div
           key={o.id}
+          className="lr-admin-card"
           style={{
             background: A.surface,
             border: `1px solid ${A.border}`,
@@ -2364,6 +2401,7 @@ function AnalyticsPage({ orders, events }) {
             每日營收趨勢
           </div>
           <div
+            className="lr-admin-chart-scroll"
             style={{
               display: "flex",
               alignItems: "flex-end",
@@ -2614,7 +2652,7 @@ function MembersPage({ members, orders, tiers, reload, flash }) {
             marginBottom: 8,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="lr-admin-card" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 14, fontWeight: 600 }}>{m.name}</span>
@@ -2825,7 +2863,7 @@ function TierRow({ tier, reload, flash }) {
         <Btn small onClick={save} disabled={busy}>儲存</Btn>
         <Btn small variant="danger" onClick={del}>刪除</Btn>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+      <div className="lr-tier-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
         <TierField
           label="等級順序"
           value={t.level}
@@ -3016,9 +3054,35 @@ function RefundsPage({ refunds, reload, flash, staffId }) {
 // 帳號權限管理
 // ═══════════════════════════════════════════
 function StaffPage({ staffList, reload, flash, allPerms }) {
+  const [adding, setAdding] = useState(false);
   return (
     <div>
-      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>帳號權限</h1>
+      <div
+        className="lr-admin-head"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 12,
+        }}
+      >
+        <h1 style={{ fontSize: 18, fontWeight: 700 }}>帳號權限</h1>
+        <Btn onClick={() => setAdding(!adding)}>
+          {adding ? "取消" : "＋ 新增人員"}
+        </Btn>
+      </div>
+
+      {adding && (
+        <NewStaffForm
+          allPerms={allPerms}
+          onDone={async () => {
+            setAdding(false);
+            await reload();
+            flash("人員已建立");
+          }}
+        />
+      )}
+
       <div
         style={{
           background: "#FFFBEB",
@@ -3031,12 +3095,199 @@ function StaffPage({ staffList, reload, flash, allPerms }) {
           lineHeight: 1.7,
         }}
       >
-        勾選每個帳號可進入的功能模組。「管理者」角色永遠擁有全部權限（包含此頁），無法被移除。新增帳號需先在 Supabase 的 Authentication 建立使用者，再回此頁設定權限。
+        勾選每個帳號可進入的功能模組。「管理者」角色永遠擁有全部權限（包含此頁），無法被移除。新增人員後，請把 Email 與初始密碼交給對方，並提醒他們登入後自行更換密碼。
       </div>
 
       {staffList.map((s) => (
         <StaffRow key={s.id} member={s} reload={reload} flash={flash} allPerms={allPerms} />
       ))}
+    </div>
+  );
+}
+
+function NewStaffForm({ allPerms, onDone }) {
+  const [f, setF] = useState({ email: "", name: "", password: "" });
+  const [perms, setPerms] = useState(["dashboard", "orders", "scanner"]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const u = (k, v) => setF((p) => ({ ...p, [k]: v }));
+  const toggle = (id) =>
+    setPerms((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
+  function randomPassword() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    let s = "";
+    for (let i = 0; i < 10; i++)
+      s += chars[Math.floor(Math.random() * chars.length)];
+    u("password", s + "!");
+  }
+
+  async function submit() {
+    setErr("");
+    if (!f.email.trim() || !/\S+@\S+\.\S+/.test(f.email))
+      return setErr("請輸入有效的 Email");
+    if (!f.name.trim()) return setErr("請輸入姓名");
+    if (f.password.length < 6) return setErr("密碼至少 6 個字元");
+    if (perms.length === 0) return setErr("請至少勾選一項權限");
+
+    setBusy(true);
+    try {
+      await createStaffAccount({
+        email: f.email.trim(),
+        password: f.password,
+        name: f.name.trim(),
+        permissions: perms,
+      });
+      onDone();
+    } catch (e) {
+      setErr(e.message);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div
+      style={{
+        background: A.surface,
+        border: `1px solid ${A.accent}40`,
+        borderRadius: 6,
+        padding: 18,
+        marginBottom: 16,
+      }}
+    >
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>
+        新增後台人員
+      </div>
+
+      <div
+        className="lr-tier-grid"
+        style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 12 }}
+      >
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: A.sub, marginBottom: 4 }}>
+            Email（登入帳號）
+          </div>
+          <input
+            value={f.email}
+            onChange={(e) => u("email", e.target.value)}
+            placeholder="staff@example.com"
+            style={{
+              width: "100%",
+              padding: "9px 11px",
+              border: `1px solid ${A.border}`,
+              borderRadius: 3,
+              fontSize: 13,
+              outline: "none",
+            }}
+          />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: A.sub, marginBottom: 4 }}>
+            姓名
+          </div>
+          <input
+            value={f.name}
+            onChange={(e) => u("name", e.target.value)}
+            placeholder="王小明"
+            style={{
+              width: "100%",
+              padding: "9px 11px",
+              border: `1px solid ${A.border}`,
+              borderRadius: 3,
+              fontSize: 13,
+              outline: "none",
+            }}
+          />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: A.sub, marginBottom: 4 }}>
+            初始密碼
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input
+              value={f.password}
+              onChange={(e) => u("password", e.target.value)}
+              placeholder="至少 6 字元"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                padding: "9px 11px",
+                border: `1px solid ${A.border}`,
+                borderRadius: 3,
+                fontSize: 13,
+                outline: "none",
+                fontFamily: "monospace",
+              }}
+            />
+            <button
+              onClick={randomPassword}
+              title="產生隨機密碼"
+              style={{
+                padding: "0 12px",
+                border: `1px solid ${A.border}`,
+                background: "#fff",
+                borderRadius: 3,
+                cursor: "pointer",
+                fontSize: 12,
+                whiteSpace: "nowrap",
+              }}
+            >
+              產生
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 11, fontWeight: 600, color: A.sub, marginBottom: 6 }}>
+        可進入的功能
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
+          gap: 8,
+          marginBottom: 14,
+        }}
+      >
+        {allPerms.map((perm) => {
+          const on = perms.includes(perm.id);
+          return (
+            <label
+              key={perm.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 10px",
+                border: `1px solid ${on ? A.accent : A.border}`,
+                background: on ? A.accentL : "#fff",
+                borderRadius: 4,
+                fontSize: 12,
+                cursor: "pointer",
+                color: on ? A.accent : A.sub,
+                fontWeight: on ? 600 : 400,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={on}
+                onChange={() => toggle(perm.id)}
+                style={{ accentColor: A.accent }}
+              />
+              {perm.label}
+            </label>
+          );
+        })}
+      </div>
+
+      {err && (
+        <div style={{ fontSize: 12, color: A.red, marginBottom: 10 }}>{err}</div>
+      )}
+
+      <Btn onClick={submit} disabled={busy}>
+        {busy ? "建立中…" : "建立帳號"}
+      </Btn>
     </div>
   );
 }

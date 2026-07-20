@@ -128,3 +128,125 @@ html { scroll-behavior: smooth; }
 
 /* 選取顏色 */
 ::selection { background: rgba(0, 102, 255, 0.15); }
+
+/* ══════════ 後台 RWD ══════════ */
+/* 桌機：頂欄與遮罩隱藏，側邊欄正常顯示 */
+.lr-admin-topbar { display: none; }
+.lr-admin-overlay { display: none; }
+
+@media (max-width: 768px) {
+  /* 手機頂欄固定在最上 */
+  .lr-admin-topbar {
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    background: #0A0E14;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    z-index: 300;
+  }
+
+  /* 側邊欄變成從左滑出的抽屜 */
+  .lr-admin-aside {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 400;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.3);
+  }
+  .lr-admin-aside-open {
+    transform: translateX(0) !important;
+  }
+  /* 抽屜打開時 logo 區要顯示（有返回感） */
+  .lr-admin-logo { display: block !important; }
+
+  /* 半透明遮罩 */
+  .lr-admin-overlay {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 350;
+    animation: lr-fade-in 0.2s ease;
+  }
+  @keyframes lr-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+  /* 主內容區：頂部留出頂欄高度，縮小 padding */
+  .lr-admin-main {
+    padding: 66px 14px 40px !important;
+    max-height: none !important;
+  }
+}
+
+/* ══════════ 後台內容區手機優化 ══════════ */
+@media (max-width: 768px) {
+  /* 標題列（h1 + 按鈕）：允許換行、按鈕不擠 */
+  .lr-admin-main h1 {
+    font-size: 17px !important;
+  }
+
+  /* 活動卡、會員卡等：橫排 flex 在手機保持橫排但縮圖變小、字級縮 */
+  .lr-admin-main img {
+    flex-shrink: 0;
+  }
+
+  /* 控制列（分析頁的區間/篩選）：換行不擠成一坨 */
+  .lr-admin-main select,
+  .lr-admin-main input[type="date"],
+  .lr-admin-main input[type="text"],
+  .lr-admin-main input[type="number"] {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* 每日趨勢圖：可橫向捲動避免壓縮 */
+  .lr-admin-chart-scroll {
+    overflow-x: auto;
+  }
+}
+
+/* 桌機維持原樣，不受影響 */
+@media (max-width: 768px) {
+  .lr-tier-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* 後台卡片：手機改直式堆疊，避免文字被壓成直排 */
+@media (max-width: 768px) {
+  .lr-admin-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  /* 卡片內縮圖在手機拉寬一點 */
+  .lr-admin-card > div:first-child[style*="width: 64px"],
+  .lr-admin-card > div:first-child[style*="width: 52px"] {
+    width: 100% !important;
+    height: 120px !important;
+  }
+  /* 卡片內的按鈕組：橫排均分 */
+  .lr-admin-card > div[style*="gap: 6px"] {
+    display: flex !important;
+    gap: 8px !important;
+  }
+  .lr-admin-card > div[style*="gap: 6px"] > button {
+    flex: 1;
+    padding: 9px 12px !important;
+    font-size: 13px !important;
+  }
+  /* 狀態標籤靠左不置中 */
+  .lr-admin-card > span {
+    align-self: flex-start !important;
+  }
+  /* 標題列：換行 */
+  .lr-admin-head {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}
