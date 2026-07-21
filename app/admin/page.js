@@ -33,10 +33,12 @@ const ALL_PERMS = [
   { id: "seo", label: "SEO 設定" },
   { id: "site", label: "場域設定" },
   { id: "scanner", label: "驗票入場" },
+  { id: "affiliates", label: "分潤管理" },
+  { id: "coupons", label: "優惠券" },
   { id: "staff", label: "帳號權限" },
 ];
 const ROLE_PERMS = {
-  admin: ["dashboard", "analytics", "events", "orders", "members", "tiers", "seo", "site", "scanner"],
+  admin: ["dashboard", "analytics", "events", "orders", "members", "tiers", "refunds", "seo", "site", "scanner", "affiliates", "coupons", "staff"],
   editor: ["dashboard", "analytics", "events", "orders", "members", "seo", "site"],
   staff: ["scanner", "orders"],
 };
@@ -376,6 +378,8 @@ export default function Admin() {
   const [tiers, setTiers] = useState([]);
   const [refunds, setRefunds] = useState([]);
   const [staffList, setStaffList] = useState([]);
+  const [affiliates, setAffiliates] = useState([]);
+  const [coupons, setCoupons] = useState([]);
   const [editing, setEditing] = useState(null);
   const [saved, setSaved] = useState("");
 
@@ -409,7 +413,7 @@ export default function Admin() {
   }
 
   async function loadAll() {
-    const [e, o, s, b, a, m, t, rf, sf] = await Promise.all([
+    const [e, o, s, b, a, m, t, rf, sf, af, cp] = await Promise.all([
       supabase.from("events").select("*, tickets(*)").order("sort_order"),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
       supabase.from("site_settings").select("*").eq("id", 1).single(),
@@ -419,6 +423,8 @@ export default function Admin() {
       supabase.from("member_tiers").select("*").order("level"),
       supabase.from("refund_requests").select("*, orders(id, total, buyer_name, events(title))").order("requested_at", { ascending: false }),
       supabase.from("staff").select("*").order("created_at"),
+      supabase.from("affiliates").select("*, affiliate_rules(*, events(title, slug))").order("created_at", { ascending: false }),
+      supabase.from("coupons").select("*, events(title), affiliates(name, code)").order("created_at", { ascending: false }),
     ]);
     setEvents(e.data || []);
     setOrders(o.data || []);
@@ -429,6 +435,8 @@ export default function Admin() {
     setTiers(t.data || []);
     setRefunds(rf.data || []);
     setStaffList(sf.data || []);
+    setAffiliates(af.data || []);
+    setCoupons(cp.data || []);
   }
 
   async function login() {
@@ -609,6 +617,8 @@ export default function Admin() {
     { id: "seo", label: "SEO 設定" },
     { id: "site", label: "場域設定" },
     { id: "scanner", label: "驗票入場" },
+    { id: "affiliates", label: "分潤管理" },
+    { id: "coupons", label: "優惠券" },
     { id: "staff", label: "帳號權限" },
   ].filter((n) => myPerms.includes(n.id));
 
@@ -790,6 +800,24 @@ export default function Admin() {
         )}
         {page === "staff" && (
           <StaffPage staffList={staffList} reload={loadAll} flash={flash} allPerms={ALL_PERMS} />
+        )}
+        {page === "coupons" && (
+          <CouponsPage
+            coupons={coupons}
+            events={events}
+            affiliates={affiliates}
+            reload={loadAll}
+            flash={flash}
+          />
+        )}
+        {page === "affiliates" && (
+          <AffiliatesPage
+            affiliates={affiliates}
+            events={events}
+            orders={orders}
+            reload={loadAll}
+            flash={flash}
+          />
         )}
       </main>
 
@@ -1056,6 +1084,7 @@ function EventForm({ init, onSave, onClose }) {
   const TABS = [
     { id: "basic", label: "基本資訊" },
     { id: "content", label: "活動內容" },
+    { id: "tickets", label: "票種設定" },
     { id: "media", label: "媒體版位" },
     { id: "seo", label: "SEO 設定" },
   ];
@@ -1431,6 +1460,10 @@ function EventForm({ init, onSave, onClose }) {
               </div>
             </>
           )}
+
+          {tab === "tickets" && (
+            <TicketsEditor eventId={init?.id} />
+          )}
         </div>
 
         <div
@@ -1647,6 +1680,33 @@ function SeoPage({ settings, events, onSave }) {
           onChange={(v) => u("gsc_token", v)}
           ph="從 Search Console 取得的 meta 驗證字串"
         />
+        <Field
+          label="Meta (Facebook) Pixel ID"
+          value={s.meta_pixel_id}
+          onChange={(v) => u("meta_pixel_id", v)}
+          ph="例如 1234567890123456"
+        />
+        <Field
+          label="LINE Tag ID"
+          value={s.line_tag_id}
+          onChange={(v) => u("line_tag_id", v)}
+          ph="從 LINE Ads 後台取得"
+        />
+        <div
+          style={{
+            background: A.accentL,
+            border: `1px solid ${A.accent}30`,
+            borderRadius: 4,
+            padding: "10px 12px",
+            fontSize: 11,
+            color: A.sub,
+            lineHeight: 1.8,
+            marginTop: 4,
+          }}
+        >
+          填入後會自動追蹤這些事件：瀏覽網站、瀏覽活動頁、進入購票、完成訂單。
+          廣告後台就能看到每筆廣告帶來多少張票與金額。
+        </div>
         <div style={{ fontSize: 11, color: A.muted, lineHeight: 1.8, marginTop: 8 }}>
           網站上線後，到 Google Search Console 提交你的 sitemap：
           <code style={{ background: A.bg, padding: "2px 6px", marginLeft: 4 }}>
@@ -3406,6 +3466,1513 @@ function StaffRow({ member, reload, flash, allPerms }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// 分潤管理
+// ═══════════════════════════════════════════
+function AffiliatesPage({ affiliates, events, orders, reload, flash }) {
+  const [adding, setAdding] = useState(false);
+  const [tab, setTab] = useState("partners");
+
+  // 有分潤的訂單
+  const commissionOrders = orders.filter((o) => o.affiliate_id);
+  const affName = (id) => affiliates.find((a) => a.id === id)?.name || "—";
+  const evName = (id) => events.find((e) => e.id === id)?.title || "—";
+
+  async function updateCommissionStatus(orderId, status) {
+    await supabase.from("orders").update({ commission_status: status }).eq("id", orderId);
+    await reload();
+    flash("分潤狀態已更新");
+  }
+
+  const totalPending = commissionOrders
+    .filter((o) => ["pending", "approved"].includes(o.commission_status))
+    .reduce((a, o) => a + (o.commission_amount || 0), 0);
+  const totalPaid = commissionOrders
+    .filter((o) => o.commission_status === "paid")
+    .reduce((a, o) => a + (o.commission_amount || 0), 0);
+
+  return (
+    <div>
+      <div
+        className="lr-admin-head"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 14,
+        }}
+      >
+        <h1 style={{ fontSize: 18, fontWeight: 700 }}>分潤管理</h1>
+        {tab === "partners" && (
+          <Btn onClick={() => setAdding(!adding)}>
+            {adding ? "取消" : "＋ 新增夥伴"}
+          </Btn>
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+        {[
+          ["partners", "合作夥伴"],
+          ["orders", `分潤訂單 ${commissionOrders.length > 0 ? `(${commissionOrders.length})` : ""}`],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            style={{
+              padding: "7px 14px",
+              border: `1px solid ${tab === id ? A.primary : A.border}`,
+              background: tab === id ? A.primary : "#fff",
+              color: tab === id ? "#fff" : A.sub,
+              fontSize: 12,
+              fontWeight: tab === id ? 700 : 400,
+              cursor: "pointer",
+              borderRadius: 3,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "partners" && (
+        <>
+          {adding && (
+            <NewAffiliateForm
+              events={events}
+              onDone={async () => {
+                setAdding(false);
+                await reload();
+                flash("夥伴已建立");
+              }}
+            />
+          )}
+
+          {affiliates.length === 0 && !adding && (
+            <div style={{ textAlign: "center", padding: 40, color: A.muted, fontSize: 13 }}>
+              還沒有合作夥伴，點右上「新增夥伴」開始
+            </div>
+          )}
+
+          {affiliates.map((a) => (
+            <AffiliateRow
+              key={a.id}
+              affiliate={a}
+              events={events}
+              orders={orders}
+              reload={reload}
+              flash={flash}
+            />
+          ))}
+        </>
+      )}
+
+      {tab === "orders" && (
+        <>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))",
+              gap: 12,
+              marginBottom: 16,
+            }}
+          >
+            {[
+              { label: "待結算分潤", value: `NT$${totalPending.toLocaleString()}`, color: A.yellow },
+              { label: "已結算分潤", value: `NT$${totalPaid.toLocaleString()}`, color: A.green },
+              { label: "分潤訂單數", value: commissionOrders.length, color: A.accent },
+            ].map((x) => (
+              <div
+                key={x.label}
+                style={{
+                  background: A.surface,
+                  border: `1px solid ${A.border}`,
+                  borderRadius: 6,
+                  padding: 16,
+                }}
+              >
+                <div style={{ fontSize: 20, fontWeight: 800, color: x.color }}>{x.value}</div>
+                <div style={{ fontSize: 11, color: A.sub, marginTop: 3 }}>{x.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {commissionOrders.length === 0 && (
+            <div style={{ textAlign: "center", padding: 40, color: A.muted, fontSize: 13 }}>
+              還沒有透過推廣連結成交的訂單
+            </div>
+          )}
+
+          {commissionOrders.map((o) => (
+            <div
+              key={o.id}
+              className="lr-admin-card"
+              style={{
+                background: A.surface,
+                border: `1px solid ${A.border}`,
+                borderRadius: 6,
+                padding: 14,
+                marginBottom: 8,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                  {affName(o.affiliate_id)} · {evName(o.event_id)}
+                </div>
+                <div style={{ fontSize: 11, color: A.sub, marginTop: 2 }}>
+                  訂單 {o.id} · NT${o.total?.toLocaleString()} ·{" "}
+                  {new Date(o.created_at).toLocaleDateString("zh-TW")}
+                </div>
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: A.accent }}>
+                  NT${(o.commission_amount || 0).toLocaleString()}
+                </div>
+              </div>
+              <select
+                value={o.commission_status || "pending"}
+                onChange={(e) => updateCommissionStatus(o.id, e.target.value)}
+                style={{
+                  padding: "7px 10px",
+                  border: `1px solid ${A.border}`,
+                  borderRadius: 3,
+                  fontSize: 12,
+                  background: "#fff",
+                  flexShrink: 0,
+                }}
+              >
+                <option value="pending">待結算</option>
+                <option value="approved">已確認</option>
+                <option value="paid">已付款</option>
+                <option value="void">作廢</option>
+              </select>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+function NewAffiliateForm({ events, onDone }) {
+  const [f, setF] = useState({
+    name: "",
+    code: "",
+    contact: "",
+    cookie_days: 30,
+  });
+  const [rules, setRules] = useState([
+    { event_id: "", commission_type: "percent", commission_value: 10 },
+  ]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const u = (k, v) => setF((p) => ({ ...p, [k]: v }));
+
+  function randomCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let s = "";
+    for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    u("code", s);
+  }
+
+  async function submit() {
+    setErr("");
+    if (!f.name.trim()) return setErr("請輸入夥伴名稱");
+    if (!/^[A-Za-z0-9_-]{3,20}$/.test(f.code))
+      return setErr("推廣代碼只能用英數字、底線、減號，長度 3–20");
+    if (rules.length === 0) return setErr("請至少設定一組分潤方案");
+
+    setBusy(true);
+    try {
+      const { data, error } = await supabase
+        .from("affiliates")
+        .insert({
+          name: f.name.trim(),
+          code: f.code.trim(),
+          contact: f.contact.trim() || null,
+          cookie_days: Math.min(365, Math.max(1, parseInt(f.cookie_days) || 30)),
+        })
+        .select()
+        .single();
+      if (error) throw new Error(error.message.includes("duplicate") ? "此推廣代碼已被使用" : error.message);
+
+      const rows = rules.map((r) => ({
+        affiliate_id: data.id,
+        event_id: r.event_id || null,
+        commission_type: r.commission_type,
+        commission_value: Number(r.commission_value) || 0,
+      }));
+      const { error: e2 } = await supabase.from("affiliate_rules").insert(rows);
+      if (e2) throw new Error("分潤方案儲存失敗：" + e2.message);
+
+      onDone();
+    } catch (e) {
+      setErr(e.message);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div
+      style={{
+        background: A.surface,
+        border: `1px solid ${A.accent}40`,
+        borderRadius: 6,
+        padding: 18,
+        marginBottom: 16,
+      }}
+    >
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>新增合作夥伴</div>
+
+      <div
+        className="lr-tier-grid"
+        style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}
+      >
+        <div>
+          <div style={fieldLabel}>夥伴名稱</div>
+          <input
+            value={f.name}
+            onChange={(e) => u("name", e.target.value)}
+            placeholder="王小明 / 某某工作室"
+            style={fieldInput}
+          />
+        </div>
+        <div>
+          <div style={fieldLabel}>推廣代碼（網址用）</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input
+              value={f.code}
+              onChange={(e) => u("code", e.target.value.toUpperCase())}
+              placeholder="KOL01"
+              style={{ ...fieldInput, flex: 1, minWidth: 0, fontFamily: "monospace" }}
+            />
+            <button onClick={randomCode} style={smallBtn}>
+              產生
+            </button>
+          </div>
+        </div>
+        <div>
+          <div style={fieldLabel}>聯絡方式（選填）</div>
+          <input
+            value={f.contact}
+            onChange={(e) => u("contact", e.target.value)}
+            placeholder="Email 或 LINE"
+            style={fieldInput}
+          />
+        </div>
+        <div>
+          <div style={fieldLabel}>追蹤天數（最多 365）</div>
+          <input
+            type="number"
+            min={1}
+            max={365}
+            value={f.cookie_days}
+            onChange={(e) => u("cookie_days", e.target.value)}
+            style={fieldInput}
+          />
+        </div>
+      </div>
+
+      <div style={{ ...fieldLabel, marginBottom: 8 }}>分潤方案</div>
+      {rules.map((r, i) => (
+        <RuleEditor
+          key={i}
+          rule={r}
+          events={events}
+          onChange={(nr) => setRules(rules.map((x, j) => (j === i ? nr : x)))}
+          onRemove={rules.length > 1 ? () => setRules(rules.filter((_, j) => j !== i)) : null}
+        />
+      ))}
+      <Btn
+        variant="ghost"
+        small
+        onClick={() =>
+          setRules([...rules, { event_id: "", commission_type: "percent", commission_value: 10 }])
+        }
+      >
+        ＋ 新增一組方案
+      </Btn>
+
+      {err && <div style={{ fontSize: 12, color: A.red, margin: "12px 0" }}>{err}</div>}
+
+      <div style={{ marginTop: 14 }}>
+        <Btn onClick={submit} disabled={busy}>
+          {busy ? "建立中…" : "建立夥伴"}
+        </Btn>
+      </div>
+    </div>
+  );
+}
+
+function RuleEditor({ rule, events, onChange, onRemove }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 8,
+        marginBottom: 8,
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
+    >
+      <select
+        value={rule.event_id}
+        onChange={(e) => onChange({ ...rule, event_id: e.target.value })}
+        style={{ ...fieldInput, flex: "1 1 160px", minWidth: 0, background: "#fff" }}
+      >
+        <option value="">全站適用（所有活動）</option>
+        {events.map((e) => (
+          <option key={e.id} value={e.id}>
+            {e.title}
+          </option>
+        ))}
+      </select>
+      <select
+        value={rule.commission_type}
+        onChange={(e) => onChange({ ...rule, commission_type: e.target.value })}
+        style={{ ...fieldInput, width: 130, background: "#fff" }}
+      >
+        <option value="percent">百分比抽成</option>
+        <option value="fixed">每張固定金額</option>
+      </select>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <input
+          type="number"
+          min={0}
+          value={rule.commission_value}
+          onChange={(e) => onChange({ ...rule, commission_value: e.target.value })}
+          style={{ ...fieldInput, width: 80 }}
+        />
+        <span style={{ fontSize: 12, color: A.sub, whiteSpace: "nowrap" }}>
+          {rule.commission_type === "percent" ? "%" : "元 / 張"}
+        </span>
+      </div>
+      {onRemove && (
+        <button onClick={onRemove} style={{ ...smallBtn, color: A.red, borderColor: "#FFB3AD" }}>
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
+function AffiliateRow({ affiliate: a, events, orders, reload, flash }) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(a.is_active);
+  const [cookieDays, setCookieDays] = useState(a.cookie_days);
+  const [rules, setRules] = useState(
+    (a.affiliate_rules || []).map((r) => ({
+      id: r.id,
+      event_id: r.event_id || "",
+      commission_type: r.commission_type,
+      commission_value: r.commission_value,
+    }))
+  );
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const myOrders = orders.filter((o) => o.affiliate_id === a.id);
+  const earned = myOrders.reduce((s, o) => s + (o.commission_amount || 0), 0);
+  const sales = myOrders.reduce((s, o) => s + (o.total || 0), 0);
+
+  const base = typeof window !== "undefined" ? window.location.origin : "";
+  const dashUrl = `${base}/partner/${a.dashboard_token}`;
+
+  async function save() {
+    setBusy(true);
+    await supabase
+      .from("affiliates")
+      .update({
+        is_active: active,
+        cookie_days: Math.min(365, Math.max(1, parseInt(cookieDays) || 30)),
+      })
+      .eq("id", a.id);
+
+    // 規則：全刪重建（數量少，最單純）
+    await supabase.from("affiliate_rules").delete().eq("affiliate_id", a.id);
+    if (rules.length > 0) {
+      await supabase.from("affiliate_rules").insert(
+        rules.map((r) => ({
+          affiliate_id: a.id,
+          event_id: r.event_id || null,
+          commission_type: r.commission_type,
+          commission_value: Number(r.commission_value) || 0,
+        }))
+      );
+    }
+    setBusy(false);
+    await reload();
+    flash("已儲存");
+  }
+
+  async function del() {
+    if (!confirm(`確定刪除夥伴「${a.name}」？已成交的分潤紀錄會保留在訂單上。`)) return;
+    await supabase.from("affiliates").delete().eq("id", a.id);
+    await reload();
+    flash("夥伴已刪除");
+  }
+
+  return (
+    <div
+      style={{
+        background: A.surface,
+        border: `1px solid ${A.border}`,
+        borderRadius: 6,
+        padding: 16,
+        marginBottom: 10,
+        opacity: active ? 1 : 0.6,
+      }}
+    >
+      <div
+        className="lr-admin-card"
+        style={{ display: "flex", alignItems: "center", gap: 12 }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>{a.name}</span>
+            <span
+              style={{
+                fontSize: 11,
+                fontFamily: "monospace",
+                background: A.accentL,
+                color: A.accent,
+                padding: "2px 8px",
+                borderRadius: 20,
+                fontWeight: 700,
+              }}
+            >
+              {a.code}
+            </span>
+            {!active && (
+              <span style={{ fontSize: 10, color: A.red, fontWeight: 700 }}>已停用</span>
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: A.sub, marginTop: 3 }}>
+            {myOrders.length} 筆成交 · 帶來 NT${sales.toLocaleString()} · 分潤 NT$
+            {earned.toLocaleString()}
+            {a.contact && ` · ${a.contact}`}
+          </div>
+        </div>
+        <Btn variant="ghost" small onClick={() => setOpen(!open)}>
+          {open ? "收合" : "管理"}
+        </Btn>
+      </div>
+
+      {open && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${A.border}` }}>
+          {/* 儀表板連結 */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={fieldLabel}>夥伴專屬儀表板（給對方看成效用，請勿公開）</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                readOnly
+                value={dashUrl}
+                onFocus={(e) => e.target.select()}
+                style={{ ...fieldInput, flex: 1, minWidth: 0, fontFamily: "monospace", background: A.bg }}
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText(dashUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1800);
+                }}
+                style={{
+                  ...smallBtn,
+                  background: copied ? A.green : A.primary,
+                  color: "#fff",
+                  border: "none",
+                  padding: "0 16px",
+                }}
+              >
+                {copied ? "已複製" : "複製"}
+              </button>
+            </div>
+          </div>
+
+          {/* 設定 */}
+          <div style={{ display: "flex", gap: 16, alignItems: "flex-end", marginBottom: 14, flexWrap: "wrap" }}>
+            <div>
+              <div style={fieldLabel}>追蹤天數</div>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={cookieDays}
+                onChange={(e) => setCookieDays(e.target.value)}
+                style={{ ...fieldInput, width: 100 }}
+              />
+            </div>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+                cursor: "pointer",
+                paddingBottom: 9,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={active}
+                onChange={(e) => setActive(e.target.checked)}
+                style={{ accentColor: A.green }}
+              />
+              啟用中
+            </label>
+          </div>
+
+          {/* 分潤方案 */}
+          <div style={{ ...fieldLabel, marginBottom: 8 }}>分潤方案</div>
+          {rules.map((r, i) => (
+            <RuleEditor
+              key={i}
+              rule={r}
+              events={events}
+              onChange={(nr) => setRules(rules.map((x, j) => (j === i ? nr : x)))}
+              onRemove={() => setRules(rules.filter((_, j) => j !== i))}
+            />
+          ))}
+          <Btn
+            variant="ghost"
+            small
+            onClick={() =>
+              setRules([...rules, { event_id: "", commission_type: "percent", commission_value: 10 }])
+            }
+          >
+            ＋ 新增一組方案
+          </Btn>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+            <Btn onClick={save} disabled={busy}>
+              {busy ? "儲存中…" : "儲存變更"}
+            </Btn>
+            <Btn variant="danger" onClick={del}>
+              刪除夥伴
+            </Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const fieldLabel = {
+  fontSize: 11,
+  fontWeight: 600,
+  color: A.sub,
+  marginBottom: 4,
+};
+
+const fieldInput = {
+  width: "100%",
+  padding: "9px 11px",
+  border: `1px solid ${A.border}`,
+  borderRadius: 3,
+  fontSize: 13,
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+const smallBtn = {
+  padding: "0 12px",
+  border: `1px solid ${A.border}`,
+  background: "#fff",
+  borderRadius: 3,
+  cursor: "pointer",
+  fontSize: 12,
+  whiteSpace: "nowrap",
+};
+
+// ═══════════════════════════════════════════
+// 優惠券 / 折扣碼
+// ═══════════════════════════════════════════
+function CouponsPage({ coupons, events, affiliates, reload, flash }) {
+  const [adding, setAdding] = useState(false);
+  const [filter, setFilter] = useState("all");
+
+  const list = coupons.filter((c) => {
+    if (filter === "site") return !c.affiliate_id;
+    if (filter === "affiliate") return !!c.affiliate_id;
+    return true;
+  });
+
+  return (
+    <div>
+      <div
+        className="lr-admin-head"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 14,
+        }}
+      >
+        <h1 style={{ fontSize: 18, fontWeight: 700 }}>優惠券 / 折扣碼</h1>
+        <Btn onClick={() => setAdding(!adding)}>
+          {adding ? "取消" : "＋ 新增優惠券"}
+        </Btn>
+      </div>
+
+      <div
+        style={{
+          background: A.accentL,
+          border: `1px solid ${A.accent}30`,
+          borderRadius: 6,
+          padding: 12,
+          fontSize: 12,
+          color: A.sub,
+          marginBottom: 16,
+          lineHeight: 1.8,
+        }}
+      >
+        綁定合作夥伴的折扣碼，客人使用時會同時計入該夥伴的分潤，且從他的推廣連結進來會自動帶入。
+        不綁夥伴的就是官網自己的促銷券。
+      </div>
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+        {[
+          ["all", "全部"],
+          ["site", "官網促銷"],
+          ["affiliate", "夥伴專屬"],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setFilter(id)}
+            style={{
+              padding: "7px 14px",
+              border: `1px solid ${filter === id ? A.primary : A.border}`,
+              background: filter === id ? A.primary : "#fff",
+              color: filter === id ? "#fff" : A.sub,
+              fontSize: 12,
+              fontWeight: filter === id ? 700 : 400,
+              cursor: "pointer",
+              borderRadius: 3,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {adding && (
+        <CouponForm
+          events={events}
+          affiliates={affiliates}
+          onDone={async () => {
+            setAdding(false);
+            await reload();
+            flash("優惠券已建立");
+          }}
+        />
+      )}
+
+      {list.length === 0 && !adding && (
+        <div style={{ textAlign: "center", padding: 40, color: A.muted, fontSize: 13 }}>
+          還沒有優惠券
+        </div>
+      )}
+
+      {list.map((c) => (
+        <CouponRow
+          key={c.id}
+          coupon={c}
+          events={events}
+          affiliates={affiliates}
+          reload={reload}
+          flash={flash}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CouponForm({ events, affiliates, initial, onDone, onCancel }) {
+  const [f, setF] = useState({
+    code: "",
+    name: "",
+    discount_type: "percent",
+    discount_value: 10,
+    event_id: "",
+    affiliate_id: "",
+    min_amount: 0,
+    max_uses: "",
+    max_uses_per_user: 1,
+    valid_from: "",
+    valid_until: "",
+    is_active: true,
+    ...(initial || {}),
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const u = (k, v) => setF((p) => ({ ...p, [k]: v }));
+
+  function randomCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let s = "";
+    for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    u("code", s);
+  }
+
+  async function submit() {
+    setErr("");
+    if (!/^[A-Za-z0-9_-]{3,24}$/.test(f.code))
+      return setErr("折扣碼只能用英數字、底線、減號，長度 3–24");
+    if (!f.name.trim()) return setErr("請輸入優惠券名稱");
+    if (Number(f.discount_value) <= 0) return setErr("折扣值需大於 0");
+    if (f.discount_type === "percent" && Number(f.discount_value) > 100)
+      return setErr("百分比不能超過 100");
+
+    const row = {
+      code: f.code.trim().toUpperCase(),
+      name: f.name.trim(),
+      discount_type: f.discount_type,
+      discount_value: Number(f.discount_value),
+      event_id: f.event_id || null,
+      affiliate_id: f.affiliate_id || null,
+      min_amount: Number(f.min_amount) || 0,
+      max_uses: f.max_uses === "" ? null : Number(f.max_uses),
+      max_uses_per_user:
+        f.max_uses_per_user === "" ? null : Number(f.max_uses_per_user),
+      valid_from: f.valid_from || null,
+      valid_until: f.valid_until || null,
+      is_active: f.is_active,
+    };
+
+    setBusy(true);
+    try {
+      if (initial?.id) {
+        const { error } = await supabase.from("coupons").update(row).eq("id", initial.id);
+        if (error) throw new Error(error.message);
+      } else {
+        const { error } = await supabase.from("coupons").insert(row);
+        if (error)
+          throw new Error(
+            error.message.includes("duplicate") ? "此折扣碼已存在" : error.message
+          );
+      }
+      onDone();
+    } catch (e) {
+      setErr(e.message);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div
+      style={{
+        background: A.surface,
+        border: `1px solid ${A.accent}40`,
+        borderRadius: 6,
+        padding: 18,
+        marginBottom: 16,
+      }}
+    >
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>
+        {initial?.id ? "編輯優惠券" : "新增優惠券"}
+      </div>
+
+      <div
+        className="lr-tier-grid"
+        style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 12 }}
+      >
+        <div>
+          <div style={fieldLabel}>折扣碼</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input
+              value={f.code}
+              onChange={(e) => u("code", e.target.value.toUpperCase())}
+              placeholder="SUMMER30"
+              style={{ ...fieldInput, flex: 1, minWidth: 0, fontFamily: "monospace" }}
+            />
+            <button onClick={randomCode} style={smallBtn}>
+              產生
+            </button>
+          </div>
+        </div>
+        <div>
+          <div style={fieldLabel}>名稱（給客人看）</div>
+          <input
+            value={f.name}
+            onChange={(e) => u("name", e.target.value)}
+            placeholder="夏季優惠 9 折"
+            style={fieldInput}
+          />
+        </div>
+        <div>
+          <div style={fieldLabel}>折扣方式</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <select
+              value={f.discount_type}
+              onChange={(e) => u("discount_type", e.target.value)}
+              style={{ ...fieldInput, flex: 1, minWidth: 0, background: "#fff" }}
+            >
+              <option value="percent">百分比</option>
+              <option value="fixed">固定金額</option>
+            </select>
+            <input
+              type="number"
+              min={0}
+              value={f.discount_value}
+              onChange={(e) => u("discount_value", e.target.value)}
+              style={{ ...fieldInput, width: 80 }}
+            />
+            <span
+              style={{
+                fontSize: 12,
+                color: A.sub,
+                alignSelf: "center",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {f.discount_type === "percent" ? "% off" : "元"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="lr-tier-grid"
+        style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 12 }}
+      >
+        <div>
+          <div style={fieldLabel}>適用活動</div>
+          <select
+            value={f.event_id}
+            onChange={(e) => u("event_id", e.target.value)}
+            style={{ ...fieldInput, background: "#fff" }}
+          >
+            <option value="">全站適用</option>
+            {events.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.title}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <div style={fieldLabel}>綁定夥伴（選填，會計分潤）</div>
+          <select
+            value={f.affiliate_id}
+            onChange={(e) => u("affiliate_id", e.target.value)}
+            style={{ ...fieldInput, background: "#fff" }}
+          >
+            <option value="">不綁定（官網促銷券）</option>
+            {affiliates.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}（{a.code}）
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <div style={fieldLabel}>最低消費金額</div>
+          <input
+            type="number"
+            min={0}
+            value={f.min_amount}
+            onChange={(e) => u("min_amount", e.target.value)}
+            placeholder="0 = 不限"
+            style={fieldInput}
+          />
+        </div>
+      </div>
+
+      <div
+        className="lr-tier-grid"
+        style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}
+      >
+        <div>
+          <div style={fieldLabel}>總使用上限</div>
+          <input
+            type="number"
+            min={1}
+            value={f.max_uses}
+            onChange={(e) => u("max_uses", e.target.value)}
+            placeholder="留空 = 不限"
+            style={fieldInput}
+          />
+        </div>
+        <div>
+          <div style={fieldLabel}>每人可用次數</div>
+          <input
+            type="number"
+            min={1}
+            value={f.max_uses_per_user}
+            onChange={(e) => u("max_uses_per_user", e.target.value)}
+            placeholder="留空 = 不限"
+            style={fieldInput}
+          />
+        </div>
+        <div>
+          <div style={fieldLabel}>開始時間</div>
+          <input
+            type="datetime-local"
+            value={f.valid_from}
+            onChange={(e) => u("valid_from", e.target.value)}
+            style={fieldInput}
+          />
+        </div>
+        <div>
+          <div style={fieldLabel}>結束時間</div>
+          <input
+            type="datetime-local"
+            value={f.valid_until}
+            onChange={(e) => u("valid_until", e.target.value)}
+            style={fieldInput}
+          />
+        </div>
+      </div>
+
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: 12,
+          cursor: "pointer",
+          marginBottom: 12,
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={f.is_active}
+          onChange={(e) => u("is_active", e.target.checked)}
+          style={{ accentColor: A.green }}
+        />
+        啟用中
+      </label>
+
+      {err && <div style={{ fontSize: 12, color: A.red, marginBottom: 10 }}>{err}</div>}
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <Btn onClick={submit} disabled={busy}>
+          {busy ? "儲存中…" : initial?.id ? "儲存變更" : "建立優惠券"}
+        </Btn>
+        {onCancel && (
+          <Btn variant="ghost" onClick={onCancel}>
+            取消
+          </Btn>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CouponRow({ coupon: c, events, affiliates, reload, flash }) {
+  const [editing, setEditing] = useState(false);
+
+  async function del() {
+    if (!confirm(`確定刪除折扣碼「${c.code}」？`)) return;
+    await supabase.from("coupons").delete().eq("id", c.id);
+    await reload();
+    flash("已刪除");
+  }
+
+  async function toggleActive() {
+    await supabase.from("coupons").update({ is_active: !c.is_active }).eq("id", c.id);
+    await reload();
+    flash(c.is_active ? "已停用" : "已啟用");
+  }
+
+  if (editing)
+    return (
+      <CouponForm
+        events={events}
+        affiliates={affiliates}
+        initial={{
+          id: c.id,
+          code: c.code,
+          name: c.name,
+          discount_type: c.discount_type,
+          discount_value: c.discount_value,
+          event_id: c.event_id || "",
+          affiliate_id: c.affiliate_id || "",
+          min_amount: c.min_amount || 0,
+          max_uses: c.max_uses ?? "",
+          max_uses_per_user: c.max_uses_per_user ?? "",
+          valid_from: c.valid_from ? c.valid_from.slice(0, 16) : "",
+          valid_until: c.valid_until ? c.valid_until.slice(0, 16) : "",
+          is_active: c.is_active,
+        }}
+        onCancel={() => setEditing(false)}
+        onDone={async () => {
+          setEditing(false);
+          await reload();
+          flash("已更新");
+        }}
+      />
+    );
+
+  const usageText =
+    c.max_uses != null
+      ? `已用 ${c.used_count || 0} / ${c.max_uses}`
+      : `已用 ${c.used_count || 0} 次`;
+
+  return (
+    <div
+      className="lr-admin-card"
+      style={{
+        background: A.surface,
+        border: `1px solid ${A.border}`,
+        borderRadius: 6,
+        padding: 14,
+        marginBottom: 8,
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        opacity: c.is_active ? 1 : 0.55,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              fontFamily: "monospace",
+              background: A.primaryL,
+              padding: "3px 10px",
+              borderRadius: 3,
+            }}
+          >
+            {c.code}
+          </span>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</span>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: A.accent,
+            }}
+          >
+            {c.discount_type === "percent"
+              ? `${Number(c.discount_value)}% off`
+              : `折 NT$${Number(c.discount_value)}`}
+          </span>
+          {c.affiliates && (
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "2px 8px",
+                borderRadius: 20,
+                background: "#F3E8FF",
+                color: "#7C3AED",
+              }}
+            >
+              夥伴 {c.affiliates.name}
+            </span>
+          )}
+          {!c.is_active && (
+            <span style={{ fontSize: 10, color: A.red, fontWeight: 700 }}>已停用</span>
+          )}
+        </div>
+        <div style={{ fontSize: 11, color: A.sub, marginTop: 4 }}>
+          {c.events ? c.events.title : "全站適用"} · {usageText}
+          {c.min_amount > 0 && ` · 滿 NT$${c.min_amount}`}
+          {c.valid_until &&
+            ` · 至 ${new Date(c.valid_until).toLocaleDateString("zh-TW")}`}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        <Btn variant="ghost" small onClick={() => setEditing(true)}>
+          編輯
+        </Btn>
+        <Btn variant="ghost" small onClick={toggleActive}>
+          {c.is_active ? "停用" : "啟用"}
+        </Btn>
+        <Btn variant="danger" small onClick={del}>
+          刪除
+        </Btn>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// 票種編輯器（活動編輯內的分頁）
+// ═══════════════════════════════════════════
+function TicketsEditor({ eventId }) {
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState("");
+
+  async function load() {
+    if (!eventId) {
+      setLoading(false);
+      return;
+    }
+    const { data } = await supabase
+      .from("tickets")
+      .select("*")
+      .eq("event_id", eventId)
+      .order("sort_order");
+    setTickets(data || []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, [eventId]);
+
+  function flashMsg(t) {
+    setMsg(t);
+    setTimeout(() => setMsg(""), 2200);
+  }
+
+  async function addTicket() {
+    const maxSort = Math.max(0, ...tickets.map((t) => t.sort_order || 0));
+    const { data, error } = await supabase
+      .from("tickets")
+      .insert({
+        event_id: eventId,
+        label: "新票種",
+        price: 1000,
+        seat_rows: 5,
+        seat_cols: 10,
+        max_per_order: 4,
+        sort_order: maxSort + 1,
+        is_hidden: true,
+      })
+      .select()
+      .single();
+    if (error) return flashMsg("新增失敗：" + error.message);
+
+    // 產生座位
+    await supabase.rpc("seed_seats_for_ticket", { p_ticket_id: data.id });
+    await load();
+    flashMsg("已新增票種（預設為隱藏，設定完再開啟）");
+  }
+
+  if (!eventId)
+    return (
+      <div
+        style={{
+          padding: 30,
+          textAlign: "center",
+          color: A.sub,
+          fontSize: 13,
+          lineHeight: 1.8,
+        }}
+      >
+        請先儲存活動，才能設定票種。
+        <br />
+        （填好基本資訊後按右下角「儲存」，再重新開啟編輯）
+      </div>
+    );
+
+  if (loading)
+    return (
+      <div style={{ padding: 30, textAlign: "center", color: A.muted, fontSize: 13 }}>
+        載入票種中…
+      </div>
+    );
+
+  return (
+    <div>
+      <div
+        style={{
+          background: "#FFFBEB",
+          border: "1px solid #FFE0A3",
+          borderRadius: 4,
+          padding: 12,
+          fontSize: 11,
+          color: "#8A5A00",
+          marginBottom: 14,
+          lineHeight: 1.8,
+        }}
+      >
+        每個票種可以各自設定開賣與結束時間（早鳥、晚鳥就是這樣做）。
+        時間留空代表不限制。勾選「暫時隱藏」可以讓票種先不出現在前台。
+        調整座位排數欄數後會重新產生座位，已售出的座位不受影響。
+      </div>
+
+      {msg && (
+        <div
+          style={{
+            background: A.accentL,
+            color: A.accent,
+            padding: "8px 12px",
+            borderRadius: 4,
+            fontSize: 12,
+            marginBottom: 12,
+          }}
+        >
+          {msg}
+        </div>
+      )}
+
+      {tickets.length === 0 && (
+        <div style={{ textAlign: "center", padding: 24, color: A.muted, fontSize: 13 }}>
+          這個活動還沒有票種
+        </div>
+      )}
+
+      {tickets.map((t) => (
+        <TicketRow key={t.id} ticket={t} reload={load} flashMsg={flashMsg} />
+      ))}
+
+      <Btn variant="ghost" onClick={addTicket}>
+        ＋ 新增票種
+      </Btn>
+    </div>
+  );
+}
+
+function TicketRow({ ticket, reload, flashMsg }) {
+  const [t, setT] = useState({
+    ...ticket,
+    sale_start: ticket.sale_start ? ticket.sale_start.slice(0, 16) : "",
+    sale_end: ticket.sale_end ? ticket.sale_end.slice(0, 16) : "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const u = (k, v) => setT((p) => ({ ...p, [k]: v }));
+
+  async function save() {
+    setBusy(true);
+    const seatsChanged =
+      Number(t.seat_rows) !== ticket.seat_rows ||
+      Number(t.seat_cols) !== ticket.seat_cols;
+
+    const { error } = await supabase
+      .from("tickets")
+      .update({
+        label: t.label,
+        description: t.description || null,
+        price: Number(t.price) || 0,
+        seat_rows: Number(t.seat_rows) || 1,
+        seat_cols: Number(t.seat_cols) || 1,
+        max_per_order: Number(t.max_per_order) || 4,
+        sort_order: Number(t.sort_order) || 0,
+        sale_start: t.sale_start || null,
+        sale_end: t.sale_end || null,
+        is_hidden: !!t.is_hidden,
+      })
+      .eq("id", ticket.id);
+
+    if (error) {
+      setBusy(false);
+      return flashMsg("儲存失敗：" + error.message);
+    }
+
+    if (seatsChanged) {
+      await supabase.rpc("seed_seats_for_ticket", { p_ticket_id: ticket.id });
+    }
+
+    setBusy(false);
+    await reload();
+    flashMsg("票種已儲存");
+  }
+
+  async function del() {
+    if (!confirm(`確定刪除票種「${t.label}」？相關座位也會一併刪除。`)) return;
+    await supabase.from("tickets").delete().eq("id", ticket.id);
+    await reload();
+    flashMsg("票種已刪除");
+  }
+
+  const now = Date.now();
+  let statusLabel = "販售中";
+  let statusColor = A.green;
+  if (t.is_hidden) {
+    statusLabel = "已隱藏";
+    statusColor = A.muted;
+  } else if (t.sale_start && new Date(t.sale_start).getTime() > now) {
+    statusLabel = "尚未開賣";
+    statusColor = A.yellow;
+  } else if (t.sale_end && new Date(t.sale_end).getTime() < now) {
+    statusLabel = "已結束";
+    statusColor = A.red;
+  }
+
+  return (
+    <div
+      style={{
+        border: `1px solid ${A.border}`,
+        borderRadius: 4,
+        padding: 12,
+        marginBottom: 8,
+        background: t.is_hidden ? A.bg : "#fff",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{t.label}</span>
+            <span style={{ fontSize: 12, color: A.accent, fontWeight: 700 }}>
+              NT${Number(t.price).toLocaleString()}
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "2px 8px",
+                borderRadius: 20,
+                background: statusColor + "1A",
+                color: statusColor,
+              }}
+            >
+              {statusLabel}
+            </span>
+          </div>
+          <div style={{ fontSize: 11, color: A.sub, marginTop: 2 }}>
+            {t.seat_rows} 排 × {t.seat_cols} 位 = {t.seat_rows * t.seat_cols} 個座位
+          </div>
+        </div>
+        <Btn variant="ghost" small onClick={() => setOpen(!open)}>
+          {open ? "收合" : "編輯"}
+        </Btn>
+      </div>
+
+      {open && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${A.border}` }}>
+          <div
+            className="lr-tier-grid"
+            style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 10 }}
+          >
+            <div>
+              <div style={fieldLabel}>票種名稱</div>
+              <input
+                value={t.label}
+                onChange={(e) => u("label", e.target.value)}
+                placeholder="早鳥票 / 全票 / 學生票"
+                style={fieldInput}
+              />
+            </div>
+            <div>
+              <div style={fieldLabel}>票價</div>
+              <input
+                type="number"
+                min={0}
+                value={t.price}
+                onChange={(e) => u("price", e.target.value)}
+                style={fieldInput}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
+            <div style={fieldLabel}>說明（選填）</div>
+            <input
+              value={t.description || ""}
+              onChange={(e) => u("description", e.target.value)}
+              placeholder="含導覽手冊、限量 50 張…"
+              style={fieldInput}
+            />
+          </div>
+
+          <div
+            className="lr-tier-grid"
+            style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 10 }}
+          >
+            <div>
+              <div style={fieldLabel}>座位排數</div>
+              <input
+                type="number"
+                min={1}
+                value={t.seat_rows}
+                onChange={(e) => u("seat_rows", e.target.value)}
+                style={fieldInput}
+              />
+            </div>
+            <div>
+              <div style={fieldLabel}>每排座位數</div>
+              <input
+                type="number"
+                min={1}
+                value={t.seat_cols}
+                onChange={(e) => u("seat_cols", e.target.value)}
+                style={fieldInput}
+              />
+            </div>
+            <div>
+              <div style={fieldLabel}>單筆最多可買</div>
+              <input
+                type="number"
+                min={1}
+                value={t.max_per_order}
+                onChange={(e) => u("max_per_order", e.target.value)}
+                style={fieldInput}
+              />
+            </div>
+            <div>
+              <div style={fieldLabel}>排序</div>
+              <input
+                type="number"
+                value={t.sort_order || 0}
+                onChange={(e) => u("sort_order", e.target.value)}
+                style={fieldInput}
+              />
+            </div>
+          </div>
+
+          <div
+            className="lr-tier-grid"
+            style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 10 }}
+          >
+            <div>
+              <div style={fieldLabel}>開賣時間（留空 = 不限）</div>
+              <input
+                type="datetime-local"
+                value={t.sale_start}
+                onChange={(e) => u("sale_start", e.target.value)}
+                style={fieldInput}
+              />
+            </div>
+            <div>
+              <div style={fieldLabel}>結束時間（留空 = 不限）</div>
+              <input
+                type="datetime-local"
+                value={t.sale_end}
+                onChange={(e) => u("sale_end", e.target.value)}
+                style={fieldInput}
+              />
+            </div>
+          </div>
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              cursor: "pointer",
+              marginBottom: 12,
+              padding: "8px 10px",
+              border: `1px solid ${t.is_hidden ? A.yellow : A.border}`,
+              background: t.is_hidden ? "#FFFBEB" : "#fff",
+              borderRadius: 4,
+              width: "fit-content",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={!!t.is_hidden}
+              onChange={(e) => u("is_hidden", e.target.checked)}
+              style={{ accentColor: A.yellow }}
+            />
+            暫時隱藏此票種（前台不顯示）
+          </label>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <Btn onClick={save} disabled={busy}>
+              {busy ? "儲存中…" : "儲存票種"}
+            </Btn>
+            <Btn variant="danger" small onClick={del}>
+              刪除
+            </Btn>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

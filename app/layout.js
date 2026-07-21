@@ -1,6 +1,9 @@
 import { getSettings, SITE_URL } from "@/lib/supabase";
 import Script from "next/script";
 import { MemberProvider } from "@/components/MemberContext";
+import Tracking from "@/components/Tracking";
+import RefCapture from "@/components/RefCapture";
+import { Suspense } from "react";
 import "./globals.css";
 
 export async function generateMetadata() {
@@ -57,6 +60,10 @@ export default async function RootLayout({ children }) {
         />
       </head>
       <body>
+        <Tracking metaPixelId={s.meta_pixel_id} lineTagId={s.line_tag_id} />
+        <Suspense fallback={null}>
+          <RefCapture />
+        </Suspense>
         <MemberProvider>{children}</MemberProvider>
         {s.ga_id && (
           <>

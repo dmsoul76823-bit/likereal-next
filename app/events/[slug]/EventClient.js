@@ -4,6 +4,7 @@ import Link from "next/link";
 import { C } from "@/lib/theme";
 import { Navbar, EventVisual, Footer, BannerCarousel } from "@/components/ui";
 import { getSeats } from "@/lib/supabase";
+import { track } from "@/components/Tracking";
 
 function useCountdown(target) {
   const calc = () => {
@@ -137,12 +138,32 @@ export default function EventClient({ event: ev, catLabel }) {
     : true;
   const canBuy = saleStarted && !cdEnd.over;
 
-  const tickets = ev.tickets || [];
+  // 只顯示未隱藏且在銷售期間內的票種
+  const nowMs = Date.now();
+  const tickets = (ev.tickets || []).filter((t) => {
+    if (t.is_hidden) return false;
+    if (t.sale_start && new Date(t.sale_start).getTime() > nowMs) return false;
+    if (t.sale_end && new Date(t.sale_end).getTime() < nowMs) return false;
+    return true;
+  });
   const totalSeats = tickets.reduce(
     (a, t) => a + t.seat_rows * t.seat_cols,
     0
   );
   const [soldByTicket, setSoldByTicket] = useState({});
+
+  // 廣告追蹤：瀏覽活動
+  useEffect(() => {
+    const lowest = tickets.length ? Math.min(...tickets.map((t) => t.price)) : 0;
+    track("ViewContent", {
+      content_name: ev.title,
+      content_ids: [ev.slug],
+      content_type: "product",
+      value: lowest,
+      currency: "TWD",
+    });
+  }, []);
+
   useEffect(() => {
     (async () => {
       const map = {};

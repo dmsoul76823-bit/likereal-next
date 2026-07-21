@@ -2,7 +2,17 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { C } from "@/lib/theme";
-import { createOrder, supabase, getSeats, reserveSeats } from "@/lib/supabase";
+import {
+  createOrder,
+  supabase,
+  getSeats,
+  reserveSeats,
+  calcCommission,
+  validateCoupon,
+  redeemCoupon,
+} from "@/lib/supabase";
+import { track } from "@/components/Tracking";
+import { getRef, getRefCoupon } from "@/components/RefCapture";
 import { useMember } from "@/components/MemberContext";
 
 function QRCode({ value, size = 160 }) {
@@ -177,6 +187,10 @@ export default function BuyClient({ event: ev }) {
   const [err, setErr] = useState("");
   const [order, setOrder] = useState(null);
   const [soldSet, setSoldSet] = useState(new Set());
+  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState(null);      // 驗證通過的券
+  const [couponMsg, setCouponMsg] = useState("");
+  const [couponBusy, setCouponBusy] = useState(false);
 
   // 登入狀態自動帶入會員資料
   useEffect(() => {
@@ -190,8 +204,25 @@ export default function BuyClient({ event: ev }) {
     }
   }, [member]);
 
-  const tickets = ev.tickets || [];
+  // 只顯示未隱藏且在銷售期間內的票種
+  const now = Date.now();
+  const tickets = (ev.tickets || []).filter((t) => {
+    if (t.is_hidden) return false;
+    if (t.sale_start && new Date(t.sale_start).getTime() > now) return false;
+    if (t.sale_end && new Date(t.sale_end).getTime() < now) return false;
+    return true;
+  });
   const ticket = tickets.find((t) => t.id === ticketId);
+
+  // 進入購票流程：發送 InitiateCheckout
+  useEffect(() => {
+    track("InitiateCheckout", {
+      content_name: ev.title,
+      content_ids: [ev.slug],
+      content_type: "product",
+      currency: "TWD",
+    });
+  }, []);
 
   // 選定票種後載入真實座位庫存
   useEffect(() => {
@@ -202,15 +233,17 @@ export default function BuyClient({ event: ev }) {
   }, [ticketId]);
   const subtotal = ticket ? ticket.price * seats.length : 0;
   const fee = 30;
-  const grossTotal = subtotal + fee;
-  // 折抵上限：會員等級的 redeem_cap %（僅折抵票價，不折手續費）
+  // 折扣券先扣
+  const discount = coupon?.ok ? Math.min(coupon.discount, subtotal) : 0;
+  const afterCoupon = subtotal - discount;
+  // 點數折抵上限：依會員等級 %（以折扣後票價為基準）
   const redeemCap = member?.member_tiers?.redeem_cap ?? 30;
   const maxRedeem = Math.min(
     member?.points ?? 0,
-    Math.floor(subtotal * (redeemCap / 100))
+    Math.floor(afterCoupon * (redeemCap / 100))
   );
   const pointsUsed = member ? Math.min(usePoints, maxRedeem) : 0;
-  const total = grossTotal - pointsUsed;
+  const total = afterCoupon - pointsUsed + fee;
 
   useEffect(() => {
     if (step < 2 || order) return;
@@ -222,6 +255,57 @@ export default function BuyClient({ event: ev }) {
     sec % 60
   ).padStart(2, "0")}`;
   const urgent = sec < 120;
+
+  // 套用折扣碼
+  async function applyCoupon(codeArg) {
+    const code = (codeArg ?? couponCode).trim();
+    if (!code) return;
+    setCouponBusy(true);
+    setCouponMsg("");
+    const res = await validateCoupon({
+      code,
+      eventId: ev.id,
+      subtotal,
+      memberId: member?.id,
+      email: form.email,
+    });
+    setCouponBusy(false);
+
+    if (res?.ok) {
+      setCoupon(res);
+      setCouponCode(res.code);
+      setUsePoints(0); // 折扣改變後重算點數上限
+      setCouponMsg("");
+    } else {
+      setCoupon(null);
+      const MSG = {
+        not_found: "找不到這組折扣碼",
+        wrong_event: "此折扣碼不適用於這個活動",
+        not_started: "此折扣碼尚未開始適用",
+        expired: "此折扣碼已過期",
+        used_up: "此折扣碼已達使用上限",
+        per_user_limit: "您已使用過這組折扣碼",
+        min_amount: `此折扣碼需消費滿 NT$${res?.min_amount || 0}`,
+      };
+      setCouponMsg(MSG[res?.reason] || "折扣碼無效");
+    }
+  }
+
+  function removeCoupon() {
+    setCoupon(null);
+    setCouponCode("");
+    setCouponMsg("");
+    setUsePoints(0);
+  }
+
+  // 從推廣連結進來：自動帶入夥伴的折扣碼
+  useEffect(() => {
+    const rc = getRefCoupon();
+    if (rc && !coupon && subtotal > 0) {
+      setCouponCode(rc);
+      applyCoupon(rc);
+    }
+  }, [subtotal]);
 
   const toggleSeat = (i) =>
     setSeats((p) =>
@@ -240,6 +324,28 @@ export default function BuyClient({ event: ev }) {
       .slice(2, 6)
       .toUpperCase()}`;
     const seatNos = seats.map((s) => s + 1);
+
+    // 分潤：優先採用折扣碼綁定的夥伴，其次採用推薦連結
+    const refCode = getRef();
+    let commission = { ok: false };
+    let attributedCode = null;
+    if (coupon?.ok && coupon.affiliate_id) {
+      // 折扣碼綁了夥伴 → 用該券的代碼歸屬
+      commission = { ok: true, affiliate_id: coupon.affiliate_id, amount: 0 };
+      attributedCode = coupon.code;
+      // 用一般規則算金額（以折扣後總額為基準）
+      if (refCode) {
+        const byRef = await calcCommission(refCode, ev.id, total, seatNos.length);
+        if (byRef?.ok && byRef.affiliate_id === coupon.affiliate_id) {
+          commission.amount = byRef.amount;
+          attributedCode = refCode;
+        }
+      }
+    } else if (refCode) {
+      commission = await calcCommission(refCode, ev.id, total, seatNos.length);
+      attributedCode = refCode;
+    }
+
     try {
       await createOrder({
         id: orderId,
@@ -257,6 +363,12 @@ export default function BuyClient({ event: ev }) {
         status: "pending",
         member_id: member?.id || null,
         points_used: pointsUsed,
+        affiliate_id: commission.ok ? commission.affiliate_id : null,
+        affiliate_code: commission.ok ? attributedCode : null,
+        commission_amount: commission.ok ? commission.amount : 0,
+        coupon_id: coupon?.ok ? coupon.coupon_id : null,
+        coupon_code: coupon?.ok ? coupon.code : null,
+        discount_amount: discount,
       });
 
       // 防超賣：原子性訂位。若座位已被別人搶走 → 回滾訂單
@@ -283,6 +395,30 @@ export default function BuyClient({ event: ev }) {
         });
         refreshMember && refreshMember();
       }
+
+      // 登記折扣碼使用
+      if (coupon?.ok) {
+        try {
+          await redeemCoupon({
+            couponId: coupon.coupon_id,
+            orderId,
+            memberId: member?.id,
+            email: form.email,
+            amount: discount,
+          });
+        } catch (e) {}
+      }
+
+      // 廣告追蹤：完成購買
+      track("Purchase", {
+        content_name: ev.title,
+        content_ids: [ev.slug],
+        content_type: "product",
+        value: total,
+        currency: "TWD",
+        num_items: seatNos.length,
+      });
+
       setOrder({ id: orderId });
     } catch (e) {
       setErr("訂單建立失敗，請稍後再試。" + (e.message ? `（${e.message}）` : ""));
@@ -883,6 +1019,107 @@ export default function BuyClient({ event: ev }) {
               ))}
             </div>
 
+            {/* 折扣碼 */}
+            <div
+              style={{
+                marginTop: 16,
+                padding: 14,
+                background: coupon?.ok ? "#F0FFF4" : C.primaryL,
+                border: `1px solid ${coupon?.ok ? "#9AE6B4" : C.border}`,
+                borderRadius: 4,
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>
+                折扣碼 / 優惠券
+              </div>
+
+              {coupon?.ok ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: C.green,
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      {coupon.code}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>
+                      {coupon.name} · 折抵 NT${discount.toLocaleString()}
+                    </div>
+                  </div>
+                  <button
+                    onClick={removeCoupon}
+                    style={{
+                      padding: "6px 12px",
+                      border: `1px solid ${C.border}`,
+                      background: "#fff",
+                      borderRadius: 3,
+                      fontSize: 12,
+                      color: C.sub,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    移除
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => e.key === "Enter" && applyCoupon()}
+                      placeholder="輸入折扣碼"
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: "10px 12px",
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 3,
+                        fontSize: 13,
+                        outline: "none",
+                        fontFamily: "monospace",
+                        textTransform: "uppercase",
+                      }}
+                    />
+                    <button
+                      onClick={() => applyCoupon()}
+                      disabled={couponBusy || !couponCode.trim()}
+                      style={{
+                        padding: "0 18px",
+                        border: "none",
+                        borderRadius: 3,
+                        background: couponCode.trim() ? C.primary : C.border,
+                        color: "#fff",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: couponCode.trim() ? "pointer" : "not-allowed",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {couponBusy ? "驗證中" : "套用"}
+                    </button>
+                  </div>
+                  {couponMsg && (
+                    <div style={{ fontSize: 12, color: C.red, marginTop: 6 }}>
+                      {couponMsg}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
             {member ? (
               maxRedeem > 0 ? (
                 <div
@@ -1076,6 +1313,24 @@ export default function BuyClient({ event: ev }) {
               <span style={{ color: C.muted }}>手續費</span>
               <span>NT${fee}</span>
             </div>
+            {discount > 0 && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderBottom: `1px solid ${C.borderL}`,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 12,
+                }}
+              >
+                <span style={{ color: C.green }}>
+                  折扣碼 {coupon?.code}
+                </span>
+                <span style={{ color: C.green }}>
+                  -NT${discount.toLocaleString()}
+                </span>
+              </div>
+            )}
             {pointsUsed > 0 && (
               <div
                 style={{
