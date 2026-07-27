@@ -21,6 +21,28 @@ const A = {
 
 const ROLE_LABEL = { admin: "管理者", editor: "編輯者", staff: "驗票員" };
 
+const ORDER_STATUS_LABEL = {
+  paid: "已付款",
+  pending: "待付款",
+  expired: "已逾時",
+  cancelled: "已取消",
+  refunded: "已退款",
+};
+const ORDER_STATUS_BG = {
+  paid: "#E8FFF0",
+  pending: "#FFF8E8",
+  expired: "#F4F6F9",
+  cancelled: "#F4F6F9",
+  refunded: "#FFF1F0",
+};
+const ORDER_STATUS_COLOR = {
+  paid: "#00C853",
+  pending: "#FF9500",
+  expired: "#9AAABB",
+  cancelled: "#9AAABB",
+  refunded: "#FF3B30",
+};
+
 // 所有可指派的權限模組
 const ALL_PERMS = [
   { id: "dashboard", label: "儀表板" },
@@ -769,7 +791,7 @@ export default function Admin() {
             onDelete={delEvent}
           />
         )}
-        {page === "orders" && <OrdersPage orders={orders} events={events} />}
+        {page === "orders" && <OrdersPage orders={orders} events={events} reload={loadAll} flash={flash} />}
         {page === "seo" && (
           <SeoPage settings={settings} events={events} onSave={saveSettings} />
         )}
@@ -1084,6 +1106,7 @@ function EventForm({ init, onSave, onClose }) {
   const TABS = [
     { id: "basic", label: "基本資訊" },
     { id: "content", label: "活動內容" },
+    { id: "sessions", label: "場次設定" },
     { id: "tickets", label: "票種設定" },
     { id: "media", label: "媒體版位" },
     { id: "seo", label: "SEO 設定" },
@@ -1461,6 +1484,8 @@ function EventForm({ init, onSave, onClose }) {
             </>
           )}
 
+          {tab === "sessions" && <SessionsEditor eventId={init?.id} />}
+
           {tab === "tickets" && (
             <TicketsEditor eventId={init?.id} />
           )}
@@ -1488,8 +1513,22 @@ function EventForm({ init, onSave, onClose }) {
 }
 
 // ── 訂單 ──
-function OrdersPage({ orders, events }) {
+function OrdersPage({ orders, events, reload, flash }) {
   const [q, setQ] = useState("");
+
+  async function markPaid(id) {
+    if (!confirm("確認這筆訂單已收到款項？座位會轉為正式售出。")) return;
+    await supabase.rpc("confirm_seats", { p_order_id: id });
+    await reload();
+    flash("已標記為付款完成");
+  }
+
+  async function cancel(id) {
+    if (!confirm("確定取消這筆訂單？座位會釋放回庫存。")) return;
+    await supabase.rpc("cancel_order", { p_order_id: id });
+    await reload();
+    flash("訂單已取消，座位已釋放");
+  }
   const evName = (id) => events.find((e) => e.id === id)?.title || "—";
   const list = orders.filter(
     (o) =>
@@ -1547,12 +1586,11 @@ function OrdersPage({ orders, events }) {
                   fontWeight: 700,
                   padding: "2px 8px",
                   borderRadius: 20,
-                  background:
-                    o.status === "paid" ? "#E8FFF0" : o.status === "pending" ? "#FFF8E8" : "#FFF1F0",
-                  color: o.status === "paid" ? A.green : o.status === "pending" ? A.yellow : A.red,
+                  background: ORDER_STATUS_BG[o.status] || "#FFF1F0",
+                  color: ORDER_STATUS_COLOR[o.status] || A.red,
                 }}
               >
-                {o.status === "paid" ? "已付款" : o.status === "pending" ? "待付款" : "已退款"}
+                {ORDER_STATUS_LABEL[o.status] || o.status}
               </span>
               {o.checked_in && (
                 <span
@@ -1577,8 +1615,29 @@ function OrdersPage({ orders, events }) {
               {o.buyer_email} · {o.buyer_phone}
             </div>
           </div>
-          <div style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap" }}>
-            NT${o.total?.toLocaleString()}
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap" }}>
+              NT${o.total?.toLocaleString()}
+            </div>
+            {o.hold_expires_at && o.status === "pending" && (
+              <div style={{ fontSize: 10, color: A.yellow, marginTop: 2 }}>
+                保留至{" "}
+                {new Date(o.hold_expires_at).toLocaleTimeString("zh-TW", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </div>
+            )}
+            {["pending", "expired"].includes(o.status) && (
+              <div style={{ display: "flex", gap: 6, marginTop: 8, justifyContent: "flex-end" }}>
+                <Btn variant="accent" small onClick={() => markPaid(o.id)}>
+                  確認付款
+                </Btn>
+                <Btn variant="ghost" small onClick={() => cancel(o.id)}>
+                  取消
+                </Btn>
+              </div>
+            )}
           </div>
         </div>
       ))}
@@ -4975,4 +5034,381 @@ function TicketRow({ ticket, reload, flashMsg }) {
       )}
     </div>
   );
+}
+
+// ═══════════════════════════════════════════
+// 場次編輯器
+// ═══════════════════════════════════════════
+function SessionsEditor({ eventId }) {
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState("");
+  const [bulk, setBulk] = useState({ from: "", to: "", times: "19:30" });
+  const [showBulk, setShowBulk] = useState(false);
+
+  async function load() {
+    if (!eventId) {
+      setLoading(false);
+      return;
+    }
+    const { data } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("event_id", eventId)
+      .order("starts_at");
+    setSessions(data || []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, [eventId]);
+
+  function flashMsg(t) {
+    setMsg(t);
+    setTimeout(() => setMsg(""), 2600);
+  }
+
+  async function addOne() {
+    const base = new Date();
+    base.setDate(base.getDate() + 7);
+    base.setHours(19, 30, 0, 0);
+    const { error } = await supabase.from("sessions").insert({
+      event_id: eventId,
+      starts_at: base.toISOString(),
+      sort_order: sessions.length,
+    });
+    if (error) return flashMsg("新增失敗：" + error.message);
+    await supabase.rpc("sync_seats_for_event", { p_event_id: eventId });
+    await load();
+    flashMsg("已新增場次，記得調整日期時間");
+  }
+
+  // 批次建立：日期區間 × 每日場次時間
+  async function addBulk() {
+    if (!bulk.from || !bulk.to) return flashMsg("請填寫起訖日期");
+    const times = bulk.times
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (times.length === 0) return flashMsg("請至少填一個時間");
+
+    const start = new Date(bulk.from);
+    const end = new Date(bulk.to);
+    if (start > end) return flashMsg("結束日期不能早於開始日期");
+
+    const rows = [];
+    let sort = sessions.length;
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      for (const t of times) {
+        const [hh, mm] = t.split(":");
+        const dt = new Date(d);
+        dt.setHours(parseInt(hh) || 0, parseInt(mm) || 0, 0, 0);
+        rows.push({
+          event_id: eventId,
+          starts_at: dt.toISOString(),
+          sort_order: sort++,
+        });
+      }
+    }
+    if (rows.length > 200) return flashMsg("一次最多建立 200 個場次");
+
+    const { error } = await supabase.from("sessions").insert(rows);
+    if (error) return flashMsg("建立失敗：" + error.message);
+    await supabase.rpc("sync_seats_for_event", { p_event_id: eventId });
+    setShowBulk(false);
+    await load();
+    flashMsg(`已建立 ${rows.length} 個場次`);
+  }
+
+  if (!eventId)
+    return (
+      <div style={{ padding: 30, textAlign: "center", color: A.sub, fontSize: 13, lineHeight: 1.8 }}>
+        請先儲存活動，才能設定場次。
+      </div>
+    );
+
+  if (loading)
+    return (
+      <div style={{ padding: 30, textAlign: "center", color: A.muted, fontSize: 13 }}>
+        載入場次中…
+      </div>
+    );
+
+  return (
+    <div>
+      <div
+        style={{
+          background: "#FFFBEB",
+          border: "1px solid #FFE0A3",
+          borderRadius: 4,
+          padding: 12,
+          fontSize: 11,
+          color: "#8A5A00",
+          marginBottom: 14,
+          lineHeight: 1.8,
+        }}
+      >
+        一個活動可以只有一個場次，也可以有很多場。
+        每個場次的座位庫存是獨立的 —— 9/12 賣完不影響 9/13。
+        新增場次後系統會自動為所有票種產生座位。
+      </div>
+
+      {msg && (
+        <div
+          style={{
+            background: A.accentL,
+            color: A.accent,
+            padding: "8px 12px",
+            borderRadius: 4,
+            fontSize: 12,
+            marginBottom: 12,
+          }}
+        >
+          {msg}
+        </div>
+      )}
+
+      {sessions.length === 0 && (
+        <div style={{ textAlign: "center", padding: 24, color: A.muted, fontSize: 13 }}>
+          這個活動還沒有場次
+        </div>
+      )}
+
+      {sessions.map((s) => (
+        <SessionRow key={s.id} session={s} reload={load} flashMsg={flashMsg} />
+      ))}
+
+      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+        <Btn variant="ghost" onClick={addOne}>
+          ＋ 新增單一場次
+        </Btn>
+        <Btn variant="ghost" onClick={() => setShowBulk(!showBulk)}>
+          {showBulk ? "取消批次" : "⚡ 批次建立多天場次"}
+        </Btn>
+      </div>
+
+      {showBulk && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: 14,
+            border: `1px solid ${A.accent}40`,
+            borderRadius: 4,
+            background: A.accentL,
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>
+            批次建立場次
+          </div>
+          <div
+            className="lr-tier-grid"
+            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 10 }}
+          >
+            <div>
+              <div style={fieldLabel}>開始日期</div>
+              <input
+                type="date"
+                value={bulk.from}
+                onChange={(e) => setBulk({ ...bulk, from: e.target.value })}
+                style={fieldInput}
+              />
+            </div>
+            <div>
+              <div style={fieldLabel}>結束日期</div>
+              <input
+                type="date"
+                value={bulk.to}
+                onChange={(e) => setBulk({ ...bulk, to: e.target.value })}
+                style={fieldInput}
+              />
+            </div>
+            <div>
+              <div style={fieldLabel}>每日場次時間（逗號分隔）</div>
+              <input
+                value={bulk.times}
+                onChange={(e) => setBulk({ ...bulk, times: e.target.value })}
+                placeholder="14:00, 19:30"
+                style={fieldInput}
+              />
+            </div>
+          </div>
+          <Btn onClick={addBulk}>建立場次</Btn>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SessionRow({ session, reload, flashMsg }) {
+  const [s, setS] = useState({
+    ...session,
+    starts_at: session.starts_at ? toLocalInput(session.starts_at) : "",
+    ends_at: session.ends_at ? toLocalInput(session.ends_at) : "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const u = (k, v) => setS((p) => ({ ...p, [k]: v }));
+
+  async function save() {
+    setBusy(true);
+    const { error } = await supabase
+      .from("sessions")
+      .update({
+        starts_at: s.starts_at ? new Date(s.starts_at).toISOString() : null,
+        ends_at: s.ends_at ? new Date(s.ends_at).toISOString() : null,
+        label: s.label || null,
+        status: s.status,
+        sort_order: Number(s.sort_order) || 0,
+      })
+      .eq("id", session.id);
+    setBusy(false);
+    if (error) return flashMsg("儲存失敗：" + error.message);
+    await reload();
+    flashMsg("場次已儲存");
+  }
+
+  async function del() {
+    if (!confirm("確定刪除這個場次？該場次的座位與庫存也會一併刪除。")) return;
+    await supabase.from("sessions").delete().eq("id", session.id);
+    await reload();
+    flashMsg("場次已刪除");
+  }
+
+  const STATUS = {
+    on_sale: ["販售中", A.green],
+    hidden: ["隱藏", A.muted],
+    cancelled: ["已取消", A.red],
+  };
+  const [statusLabel, statusColor] = STATUS[s.status] || STATUS.on_sale;
+
+  return (
+    <div
+      style={{
+        border: `1px solid ${A.border}`,
+        borderRadius: 4,
+        padding: 12,
+        marginBottom: 8,
+        background: s.status === "on_sale" ? "#fff" : A.bg,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>
+              {session.starts_at
+                ? new Date(session.starts_at).toLocaleString("zh-TW", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "未設定時間"}
+            </span>
+            {s.label && (
+              <span style={{ fontSize: 11, color: A.sub }}>{s.label}</span>
+            )}
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "2px 8px",
+                borderRadius: 20,
+                background: statusColor + "1A",
+                color: statusColor,
+              }}
+            >
+              {statusLabel}
+            </span>
+          </div>
+        </div>
+        <Btn variant="ghost" small onClick={() => setOpen(!open)}>
+          {open ? "收合" : "編輯"}
+        </Btn>
+      </div>
+
+      {open && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${A.border}` }}>
+          <div
+            className="lr-tier-grid"
+            style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 10 }}
+          >
+            <div>
+              <div style={fieldLabel}>開演時間</div>
+              <input
+                type="datetime-local"
+                value={s.starts_at}
+                onChange={(e) => u("starts_at", e.target.value)}
+                style={fieldInput}
+              />
+            </div>
+            <div>
+              <div style={fieldLabel}>結束時間（選填）</div>
+              <input
+                type="datetime-local"
+                value={s.ends_at}
+                onChange={(e) => u("ends_at", e.target.value)}
+                style={fieldInput}
+              />
+            </div>
+          </div>
+
+          <div
+            className="lr-tier-grid"
+            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 12 }}
+          >
+            <div>
+              <div style={fieldLabel}>場次標籤（選填）</div>
+              <input
+                value={s.label || ""}
+                onChange={(e) => u("label", e.target.value)}
+                placeholder="首演場 / 加演場 / 親子場"
+                style={fieldInput}
+              />
+            </div>
+            <div>
+              <div style={fieldLabel}>狀態</div>
+              <select
+                value={s.status}
+                onChange={(e) => u("status", e.target.value)}
+                style={{ ...fieldInput, background: "#fff" }}
+              >
+                <option value="on_sale">販售中</option>
+                <option value="hidden">隱藏（前台不顯示）</option>
+                <option value="cancelled">已取消</option>
+              </select>
+            </div>
+            <div>
+              <div style={fieldLabel}>排序</div>
+              <input
+                type="number"
+                value={s.sort_order || 0}
+                onChange={(e) => u("sort_order", e.target.value)}
+                style={fieldInput}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <Btn onClick={save} disabled={busy}>
+              {busy ? "儲存中…" : "儲存場次"}
+            </Btn>
+            <Btn variant="danger" small onClick={del}>
+              刪除
+            </Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// UTC ISO → datetime-local 需要的本地時間字串
+function toLocalInput(iso) {
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
 }

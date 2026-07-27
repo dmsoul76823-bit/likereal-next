@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { C } from "@/lib/theme";
 import { Navbar, EventVisual, Footer, BannerCarousel } from "@/components/ui";
-import { getSeats } from "@/lib/supabase";
+import { getEventSessions } from "@/lib/supabase";
 import { track } from "@/components/Tracking";
 
 function useCountdown(target) {
@@ -129,6 +129,15 @@ function YouTubeBlock({ videoId }) {
   );
 }
 
+function formatSessionDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const week = ["日", "一", "二", "三", "四", "五", "六"][d.getDay()];
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}（${week}）${String(
+    d.getHours()
+  ).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export default function EventClient({ event: ev, catLabel }) {
   const [tab, setTab] = useState("info");
   const cdEnd = useCountdown(ev.sale_end);
@@ -150,7 +159,11 @@ export default function EventClient({ event: ev, catLabel }) {
     (a, t) => a + t.seat_rows * t.seat_cols,
     0
   );
-  const [soldByTicket, setSoldByTicket] = useState({});
+  const [sessions, setSessions] = useState([]);
+
+  useEffect(() => {
+    getEventSessions(ev.id).then(setSessions);
+  }, []);
 
   // 廣告追蹤：瀏覽活動
   useEffect(() => {
@@ -164,20 +177,9 @@ export default function EventClient({ event: ev, catLabel }) {
     });
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      const map = {};
-      for (const t of tickets) {
-        const rows = await getSeats(t.id);
-        map[t.id] = rows.filter((s) => s.status !== "available").length;
-      }
-      setSoldByTicket(map);
-    })();
-  }, []);
-  const totalSold = tickets.reduce(
-    (a, t) => a + (soldByTicket[t.id] || 0),
-    0
-  );
+  const seatsTotal = sessions.reduce((a, s) => a + Number(s.seats_total || 0), 0);
+  const seatsAvail = sessions.reduce((a, s) => a + Number(s.seats_available || 0), 0);
+  const totalSold = seatsTotal - seatsAvail;
   const soldPct = totalSeats ? Math.round((totalSold / totalSeats) * 100) : 0;
 
   const TABS = [
@@ -595,8 +597,58 @@ export default function EventClient({ event: ev, catLabel }) {
             >
               活動票券
             </h2>
+            {sessions.length > 1 && (
+              <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.borderL}` }}>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
+                  演出場次
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {sessions.map((s) => {
+                    const soldOut = Number(s.seats_available) === 0;
+                    return (
+                      <div
+                        key={s.id}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "9px 11px",
+                          background: C.primaryL,
+                          borderRadius: 4,
+                          opacity: soldOut ? 0.55 : 1,
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>
+                            {formatSessionDate(s.starts_at)}
+                          </div>
+                          {s.label && (
+                            <div style={{ fontSize: 11, color: C.sub }}>{s.label}</div>
+                          )}
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: soldOut
+                              ? C.red
+                              : Number(s.seats_available) < 20
+                              ? C.yellow
+                              : C.sub,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {soldOut ? "已售完" : `剩 ${s.seats_available}`}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {tickets.map((t, i) => {
-              const rem = t.seat_rows * t.seat_cols - (soldByTicket[t.id] || 0);
               return (
                 <div
                   key={t.id}
@@ -615,14 +667,8 @@ export default function EventClient({ event: ev, catLabel }) {
                       {t.label}
                     </div>
                     <div style={{ fontSize: 12, color: C.sub }}>{t.description}</div>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: rem < 50 ? C.red : C.muted,
-                        marginTop: 3,
-                      }}
-                    >
-                      剩餘 {rem} 張 · 每人限購 {t.max_per_order} 張
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
+                      每人限購 {t.max_per_order} 張
                     </div>
                   </div>
                   <div

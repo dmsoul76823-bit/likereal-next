@@ -7,6 +7,7 @@ import {
   supabase,
   getSeats,
   reserveSeats,
+  getEventSessions,
   calcCommission,
   validateCoupon,
   redeemCoupon,
@@ -14,6 +15,15 @@ import {
 import { track } from "@/components/Tracking";
 import { getRef, getRefCoupon } from "@/components/RefCapture";
 import { useMember } from "@/components/MemberContext";
+
+function formatSession(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const week = ["日", "一", "二", "三", "四", "五", "六"][d.getDay()];
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}（${week}）${String(
+    d.getHours()
+  ).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 
 function QRCode({ value, size = 160 }) {
   const cells = 21;
@@ -170,6 +180,9 @@ export default function BuyClient({ event: ev }) {
   const [step, setStep] = useState(1);
   const [usePoints, setUsePoints] = useState(0);
   const [ticketId, setTicketId] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [sessionId, setSessionId] = useState(null);
+  const [holdExpires, setHoldExpires] = useState(null);
   const [qty, setQty] = useState(1);
   const [seats, setSeats] = useState([]);
   const [agreed, setAgreed] = useState(false);
@@ -214,6 +227,14 @@ export default function BuyClient({ event: ev }) {
   });
   const ticket = tickets.find((t) => t.id === ticketId);
 
+  // 載入場次；只有一場就自動選取
+  useEffect(() => {
+    getEventSessions(ev.id).then((list) => {
+      setSessions(list);
+      if (list.length === 1) setSessionId(list[0].id);
+    });
+  }, []);
+
   // 進入購票流程：發送 InitiateCheckout
   useEffect(() => {
     track("InitiateCheckout", {
@@ -224,13 +245,15 @@ export default function BuyClient({ event: ev }) {
     });
   }, []);
 
-  // 選定票種後載入真實座位庫存
+  // 選定場次與票種後載入真實座位庫存
   useEffect(() => {
-    if (!ticketId) return;
-    getSeats(ticketId).then((rows) => {
-      setSoldSet(new Set(rows.filter((s) => s.status !== "available").map((s) => s.seat_no)));
+    if (!ticketId || !sessionId) return;
+    getSeats(sessionId, ticketId).then((rows) => {
+      setSoldSet(
+        new Set(rows.filter((s) => s.status !== "available").map((s) => s.seat_no))
+      );
     });
-  }, [ticketId]);
+  }, [ticketId, sessionId]);
   const subtotal = ticket ? ticket.price * seats.length : 0;
   const fee = 30;
   // 折扣券先扣
@@ -350,6 +373,7 @@ export default function BuyClient({ event: ev }) {
       await createOrder({
         id: orderId,
         event_id: ev.id,
+        session_id: sessionId,
         ticket_id: ticket.id,
         seats: seatNos,
         buyer_name: form.name,
@@ -372,11 +396,11 @@ export default function BuyClient({ event: ev }) {
       });
 
       // 防超賣：原子性訂位。若座位已被別人搶走 → 回滾訂單
-      const res = await reserveSeats(ticket.id, seatNos, orderId);
+      const res = await reserveSeats(sessionId, ticket.id, seatNos, orderId, 30);
       if (!res?.ok) {
         await supabase.from("orders").delete().eq("id", orderId);
         // 重新載入座位狀態讓使用者重選
-        const fresh = await getSeats(ticket.id);
+        const fresh = await getSeats(sessionId, ticket.id);
         setSoldSet(new Set(fresh.filter((s) => s.status !== "available").map((s) => s.seat_no)));
         setSeats([]);
         setStep(2);
@@ -395,6 +419,8 @@ export default function BuyClient({ event: ev }) {
         });
         refreshMember && refreshMember();
       }
+
+      setHoldExpires(res.expires_at || null);
 
       // 登記折扣碼使用
       if (coupon?.ok) {
@@ -496,6 +522,31 @@ export default function BuyClient({ event: ev }) {
             >
               <QRCode value={`LIKEREAL|${order.id}`} size={150} />
             </div>
+
+            {holdExpires && (
+              <div
+                style={{
+                  background: "#FFF8E8",
+                  border: "1px solid #FFE0A3",
+                  borderRadius: 4,
+                  padding: "10px 12px",
+                  fontSize: 12,
+                  color: "#8A5A00",
+                  lineHeight: 1.7,
+                  marginBottom: 12,
+                  textAlign: "left",
+                }}
+              >
+                座位已為您保留至{" "}
+                <strong>
+                  {new Date(holdExpires).toLocaleTimeString("zh-TW", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </strong>
+                ，逾時未完成付款將自動釋出。
+              </div>
+            )}
             <div
               style={{
                 fontSize: 11,
@@ -516,7 +567,7 @@ export default function BuyClient({ event: ev }) {
                 lineHeight: 1.7,
               }}
             >
-              入場時出示此 QR Code 或 NFC 感應
+入場時出示此 QR Code 或 NFC 感應
               <br />
               票券已寄送至 {form.email}
             </div>
@@ -543,9 +594,10 @@ export default function BuyClient({ event: ev }) {
     );
 
   const STEPS = ["選擇場次", "選擇位置", "填寫資料", "確認預約"];
+  const needSession = sessions.length > 0;
   const canNext =
     step === 1
-      ? ticketId && agreed
+      ? ticketId && agreed && (!needSession || sessionId)
       : step === 2
       ? seats.length === qty
       : step === 3
@@ -714,7 +766,96 @@ export default function BuyClient({ event: ev }) {
             >
               選擇場次與數量
             </div>
-            {tickets.map((t, i) => {
+
+            {sessions.length > 1 && (
+              <div style={{ padding: 14, borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 8 }}>
+                  場次
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {sessions.map((s) => {
+                    const sel = sessionId === s.id;
+                    const soldOut = Number(s.seats_available) === 0;
+                    return (
+                      <button
+                        key={s.id}
+                        disabled={soldOut}
+                        onClick={() => {
+                          setSessionId(s.id);
+                          setSeats([]);
+                        }}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "11px 13px",
+                          border: `1px solid ${sel ? C.accent : C.border}`,
+                          background: soldOut ? C.primaryL : sel ? C.accentL : "#fff",
+                          borderRadius: 4,
+                          cursor: soldOut ? "not-allowed" : "pointer",
+                          textAlign: "left",
+                          opacity: soldOut ? 0.55 : 1,
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: sel ? 700 : 500 }}>
+                            {formatSession(s.starts_at)}
+                          </div>
+                          {s.label && (
+                            <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>
+                              {s.label}
+                            </div>
+                          )}
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: soldOut ? C.red : Number(s.seats_available) < 20 ? C.yellow : C.sub,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {soldOut ? "已售完" : `剩 ${s.seats_available}`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {sessions.length === 1 && (
+              <div
+                style={{
+                  padding: "11px 14px",
+                  borderBottom: `1px solid ${C.border}`,
+                  fontSize: 13,
+                  color: C.sub,
+                }}
+              >
+                場次：
+                <span style={{ color: C.text, fontWeight: 600 }}>
+                  {formatSession(sessions[0].starts_at)}
+                </span>
+                {sessions[0].label && ` · ${sessions[0].label}`}
+              </div>
+            )}
+
+            {sessions.length > 1 && !sessionId && (
+              <div
+                style={{
+                  padding: "16px 14px",
+                  fontSize: 13,
+                  color: C.muted,
+                  textAlign: "center",
+                }}
+              >
+                請先選擇場次
+              </div>
+            )}
+
+            {(sessionId || sessions.length === 0) && tickets.map((t, i) => {
               const totalSeats = t.seat_rows * t.seat_cols;
               const soldCount = ticketId === t.id ? soldSet.size : null;
               const rem = soldCount !== null ? totalSeats - soldCount : totalSeats;

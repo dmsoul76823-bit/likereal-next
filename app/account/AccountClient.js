@@ -434,6 +434,8 @@ function StatusBadge({ status, checkedIn }) {
   const map = {
     paid: ["已付款", "#E8FFF0", "#00C853"],
     pending: ["待付款", "#FFF8E8", "#FF9500"],
+    expired: ["已逾時", "#F4F6F9", "#9AAABB"],
+    cancelled: ["已取消", "#F4F6F9", "#9AAABB"],
     refunded: ["已退款", "#FFF1F0", "#FF3B30"],
   };
   const [label, bg, color] = map[status] || map.pending;

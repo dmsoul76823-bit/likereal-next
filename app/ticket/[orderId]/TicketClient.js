@@ -110,6 +110,8 @@ export default function TicketClient({ orderId }) {
   const statusMap = {
     paid: ["已付款", C.green],
     pending: ["待付款", C.yellow],
+    expired: ["已逾時未付款", C.muted],
+    cancelled: ["已取消", C.muted],
     refunded: ["已退款", C.red],
   };
   const [statusLabel, statusColor] = statusMap[order.status] || statusMap.pending;
