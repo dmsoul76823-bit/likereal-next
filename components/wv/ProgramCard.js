@@ -1,0 +1,53 @@
+import Link from "next/link";
+import { parseDate } from "@/lib/wv";
+
+export default function ProgramCard({ program }) {
+  const d = parseDate(program.firstDate);
+  const hasSession = program.sessionCount > 0;
+
+  return (
+    <Link href={`/programs/${program.slug}`} className="pgcard">
+      <div
+        className="pic"
+        style={program.img ? { backgroundImage: `url("${program.img}")` } : undefined}
+      >
+        {program.isLive && <span className="live-tag sm">● LIVE</span>}
+        {hasSession && (
+          <span className="badge-n">{program.sessionCount} 場</span>
+        )}
+      </div>
+
+      <div className="body">
+        <h4>{program.name}</h4>
+        {program.intro && (
+          <div
+            className="meta"
+            style={{
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {program.intro}
+          </div>
+        )}
+        <div className="foot">
+          <div className="meta">
+            {d ? (
+              <>
+                {d.y}/{d.m}/{d.d}（{d.weekday}）起
+                {program.venue && <div style={{ marginTop: 3 }}>{program.venue}</div>}
+              </>
+            ) : (
+              "場次準備中"
+            )}
+          </div>
+          <div className="pr" style={{ fontSize: 14 }}>
+            查看場次
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}

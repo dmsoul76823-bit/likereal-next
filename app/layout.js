@@ -8,22 +8,22 @@ import "./globals.css";
 
 export async function generateMetadata() {
   const s = await getSettings();
-  const title = s.site_title || "Like Real｜虛擬與現實整合劇場";
+  const title = s.site_title || "Wonder V｜沉浸式場域娛樂平台";
   const desc =
     s.site_desc ||
-    "沉浸式裝置展與虛實共演劇場，探索光、聲音與空間的邊界。";
+    "360° 全息舞台、裸視 3D 觀看與場域限定票券，Wonder V 沉浸式場域。";
   const img = s.og_image || `${SITE_URL}/og-default.png`;
 
   return {
     metadataBase: new URL(SITE_URL),
-    title: { default: title, template: `%s｜${s.site_name || "Like Real"}` },
+    title: { default: title, template: `%s｜${s.site_name || "Wonder V"}` },
     description: desc,
     keywords: s.site_keywords?.split(",").map((k) => k.trim()),
     openGraph: {
       title,
       description: desc,
       url: SITE_URL,
-      siteName: s.site_name || "Like Real",
+      siteName: s.site_name || "Wonder V",
       images: [{ url: img, width: 1200, height: 630 }],
       locale: "zh_TW",
       type: "website",
@@ -46,7 +46,7 @@ export default async function RootLayout({ children }) {
   const orgJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: s.site_name || "Like Real",
+    name: s.site_name || "Wonder V",
     url: SITE_URL,
     description: s.site_desc,
   };

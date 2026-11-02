@@ -1,22 +1,20 @@
-import { getEvents, SITE_URL } from "@/lib/supabase";
+import { SITE_URL } from "@/lib/supabase";
+import { getAllProgramNames } from "@/lib/wv";
 
 export default async function sitemap() {
-  const events = await getEvents();
+  const base = SITE_URL || "https://likereal-next.vercel.app";
+  const now = new Date();
 
-  const eventUrls = events.map((e) => ({
-    url: `${SITE_URL}/events/${e.slug}`,
-    lastModified: new Date(e.created_at),
-    changeFrequency: "daily",
-    priority: 0.8,
-  }));
+  const names = await getAllProgramNames();
 
   return [
-    {
-      url: SITE_URL,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    ...eventUrls,
+    { url: `${base}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
+    { url: `${base}/programs`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    ...names.map((name) => ({
+      url: `${base}/programs/${encodeURIComponent(name)}`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    })),
   ];
 }
