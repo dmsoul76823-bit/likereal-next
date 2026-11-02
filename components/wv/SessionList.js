@@ -1,13 +1,18 @@
 "use client";
 import { useState } from "react";
 import { parseDate } from "@/lib/wv";
+import SeatPicker from "./SeatPicker";
 
 const MAXSHOW = 8;
-// 購票流程尚未搬到新站，先導回現行售票站
-const BUY_URL = "https://lireal.vercel.app/ticket";
 
-export default function SessionList({ sessions }) {
+export default function SessionList({ sessions, venues = [], programName = "" }) {
   const [showAll, setShowAll] = useState(false);
+  const [picking, setPicking] = useState(null); // 正在選位的場次
+
+  const venueOf = (s) =>
+    venues.find((v) => String(v.id) === String(s?.venueId)) ||
+    venues.find((v) => v.name && v.name === s?.venue) ||
+    null;
 
   if (!sessions?.length) {
     return (
@@ -61,9 +66,13 @@ export default function SessionList({ sessions }) {
                   已售罄
                 </button>
               ) : (
-                <a className="add" href={BUY_URL} target="_blank" rel="noopener noreferrer">
+                <button
+                  type="button"
+                  className="add"
+                  onClick={() => setPicking(s)}
+                >
                   選位購票
-                </a>
+                </button>
               )}
             </div>
           </div>
@@ -78,6 +87,15 @@ export default function SessionList({ sessions }) {
         >
           顯示全部 {sessions.length} 個場次
         </button>
+      )}
+
+      {picking && (
+        <SeatPicker
+          programName={programName}
+          session={picking}
+          venue={venueOf(picking)}
+          onClose={() => setPicking(null)}
+        />
       )}
     </div>
   );

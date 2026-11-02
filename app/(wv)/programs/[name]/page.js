@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProgram, getAllProgramNames, fromSlug, parseDate } from "@/lib/wv";
+import {
+  getProgram,
+  getAllProgramNames,
+  getVenues,
+  fromSlug,
+  parseDate,
+} from "@/lib/wv";
 import MediaHero from "@/components/wv/MediaHero";
 import SessionList from "@/components/wv/SessionList";
 
@@ -39,7 +45,7 @@ export async function generateMetadata({ params }) {
 export default async function ProgramDetail({ params }) {
   const { name: raw } = await params;
   const name = fromSlug(raw);
-  const program = await getProgram(name);
+  const [program, venues] = await Promise.all([getProgram(name), getVenues()]);
   if (!program) notFound();
 
   const first = program.sessions[0];
@@ -120,7 +126,11 @@ export default async function ProgramDetail({ params }) {
 
           <div className="ev-box" id="sessRows">
             <h3>選擇場次</h3>
-            <SessionList sessions={program.sessions} />
+            <SessionList
+              sessions={program.sessions}
+              venues={venues}
+              programName={program.name}
+            />
           </div>
 
           <div className="ev-box">

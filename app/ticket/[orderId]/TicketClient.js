@@ -4,63 +4,7 @@ import Link from "next/link";
 import { getOrder, requestRefund } from "@/lib/supabase";
 import { useMember } from "@/components/MemberContext";
 import { C } from "@/lib/theme";
-
-function QRCode({ value, size = 180 }) {
-  const cells = 21;
-  const quiet = 2;
-  const grid = cells + quiet * 2;
-  const cell = size / grid;
-
-  let seed = 0;
-  for (const ch of value) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
-  const rand = (r, c) => {
-    let x = (seed ^ (r * 73856093) ^ (c * 19349663)) >>> 0;
-    x = (x ^ (x >>> 13)) >>> 0;
-    x = (x * 1274126177) >>> 0;
-    return (x & 7) < 3;
-  };
-
-  const isFinder = (r, c) => {
-    const inBox = (br, bc) => r >= br && r < br + 7 && c >= bc && c < bc + 7;
-    const ring = (br, bc) =>
-      inBox(br, bc) &&
-      (r === br || r === br + 6 || c === bc || c === bc + 6 ||
-        (r >= br + 2 && r <= br + 4 && c >= bc + 2 && c <= bc + 4));
-    return ring(0, 0) || ring(0, cells - 7) || ring(cells - 7, 0);
-  };
-  const inFinderArea = (r, c) => {
-    const box = (br, bc) => r >= br && r < br + 8 && c >= bc && c < bc + 8;
-    return box(0, 0) || box(0, cells - 8) || box(cells - 8, 0);
-  };
-
-  const rects = [];
-  for (let r = 0; r < cells; r++) {
-    for (let cc = 0; cc < cells; cc++) {
-      let on;
-      if (inFinderArea(r, cc)) on = isFinder(r, cc);
-      else on = rand(r, cc);
-      if (on) {
-        rects.push(
-          <rect
-            key={`${r}-${cc}`}
-            x={(cc + quiet) * cell}
-            y={(r + quiet) * cell}
-            width={cell}
-            height={cell}
-            fill="#0A0E14"
-          />
-        );
-      }
-    }
-  }
-
-  return (
-    <svg width={size} height={size} role="img" aria-label="電子票券 QR Code">
-      <rect width={size} height={size} fill="white" />
-      {rects}
-    </svg>
-  );
-}
+import Qr from "@/components/wv/Qr";
 
 export default function TicketClient({ orderId }) {
   const { member } = useMember() || {};
@@ -184,7 +128,7 @@ export default function TicketClient({ orderId }) {
             ) : (
               <>
                 <div style={{ display: "inline-block", padding: 8, background: "#fff", border: `1px solid ${C.borderL}`, borderRadius: 8 }}>
-                  <QRCode value={`LIKEREAL|${order.id}`} size={180} />
+                  <Qr value={`WONDERV|${order.id}`} size={180} />
                 </div>
                 <div style={{ fontSize: 11, color: C.sub, marginTop: 10, lineHeight: 1.6 }}>
                   入場時出示此 QR Code
