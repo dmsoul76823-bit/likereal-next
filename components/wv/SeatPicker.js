@@ -22,7 +22,14 @@ const DONATE = [
   "陽光社福基金會（愛心碼 8585）",
 ];
 
-export default function SeatPicker({ programName, session, venue, onClose }) {
+export default function SeatPicker({
+  programName,
+  session,
+  venue,
+  onClose,
+  change = null, // 換位模式：{ code, oldPrice, oldSeat, oldLabel, oldTicket }
+  onChanged,
+}) {
   const [step, setStep] = useState("tier"); // tier → seats → form → done
   const [tier, setTier] = useState(-1);
   const [sel, setSel] = useState(() => new Set());
@@ -44,7 +51,11 @@ export default function SeatPicker({ programName, session, venue, onClose }) {
 
   const tickets = session?.tickets || [];
   const zm = useMemo(() => zoneMap(session), [session]);
-  const sold = useMemo(() => soldSet(session), [session]);
+  const sold = useMemo(() => {
+    const s = soldSet(session);
+    if (change?.oldSeat) s.delete(change.oldSeat); // 原座位先當空位，但下面不准選回去
+    return s;
+  }, [session, change]);
 
   const units = useMemo(() => selUnits(venue, zm, sel), [venue, zm, sel]);
   const total = units.reduce((s, u) => s + unitPrice(zm, u), 0);
@@ -62,6 +73,15 @@ export default function SeatPicker({ programName, session, venue, onClose }) {
       flash("這個位置屬於其他票種");
       return;
     }
+    if (change) {
+      if (id === change.oldSeat) {
+        flash("這就是你原本的座位");
+        return;
+      }
+      setSel(sel.has(id) ? new Set() : new Set([id]));
+      return;
+    }
+
     const unit = unitOf(venue, zm, id);
     const next = new Set(sel);
 
@@ -142,6 +162,54 @@ export default function SeatPicker({ programName, session, venue, onClose }) {
     }
   }
 
+  // ── 送出換位 ──────────────────────────────────────
+  async function submitChange() {
+    const u = units[0];
+    if (!u) {
+      flash("請先點選新座位");
+      return;
+    }
+    if (u.length > 1) {
+      flash("換位一次只能選一個座位（包廂請聯絡客服）");
+      return;
+    }
+    const seat = u[0];
+    const z = zm[seat];
+    const price = Number(z?.t?.p) || 0;
+    if (price < change.oldPrice) {
+      flash("僅提供同級或升級換位");
+      return;
+    }
+    const diff = price - change.oldPrice;
+
+    const ok = window.confirm(
+      "確認換位？\n\n" +
+        `原座位：${change.oldTicket} ${change.oldLabel}\n` +
+        `新座位：${z.t.n} ${seatLabelOf(seat)}\n\n` +
+        (diff > 0 ? `需補差額：NT$${diff.toLocaleString()}` : "無需補差額") +
+        "\n\n⚠ 每張票券僅限換位一次，確認後無法再更改。"
+    );
+    if (!ok) return;
+
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.rpc("change_seat", {
+        p_code: change.code,
+        p_seat: seat,
+        p_label: seatLabelOf(seat),
+        p_ticket: z.t.n,
+        p_price: price,
+      });
+      if (error) throw error;
+      onChanged?.(data, diff);
+      onClose();
+    } catch (e) {
+      flash("換位失敗：" + (e?.message || e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   // ── 各步驟畫面 ────────────────────────────────────
   const stepBar = (now) => (
     <div className="step-bar">
@@ -149,7 +217,7 @@ export default function SeatPicker({ programName, session, venue, onClose }) {
       <i>→</i>
       <span className={now === 2 ? "on" : ""}>2 選座位</span>
       <i>→</i>
-      <span className={now === 3 ? "on" : ""}>3 填資料</span>
+      <span className={now === 3 ? "on" : ""}>{change ? "3 確認換位" : "3 填資料"}</span>
     </div>
   );
 
@@ -163,10 +231,17 @@ export default function SeatPicker({ programName, session, venue, onClose }) {
     body = (
       <>
         {stepBar(1)}
+        {change && (
+          <div className="tier-note" style={{ margin: "0 0 12px" }}>
+            原票種 <b>{change.oldTicket}</b>（NT${change.oldPrice.toLocaleString()}）—
+            只能選擇<b>同價或更高</b>的票種，差額另行補款。
+          </div>
+        )}
         <div className="tier-list">
           {tickets.map((t, i) => {
             const s = tierStat(session, venue, sold, i);
-            const out = s.left <= 0;
+            const low = !!change && (Number(t.p) || 0) < change.oldPrice;
+            const out = s.left <= 0 || low;
             return (
               <div
                 key={i}
@@ -203,10 +278,12 @@ export default function SeatPicker({ programName, session, venue, onClose }) {
                         : "var(--muted)",
                     }}
                   >
-                    {out ? "已售完" : `剩 ${s.left} ${s.unit}`}
+                    {low ? "低於原票價" : out ? "已售完" : `剩 ${s.left} ${s.unit}`}
                   </div>
                 </div>
-                <span className="go">{out ? "—" : "選座位 →"}</span>
+                <span className="go">
+                  {low ? "低於原票價" : out ? "—" : "選座位 →"}
+                </span>
               </div>
             );
           })}
@@ -225,6 +302,16 @@ export default function SeatPicker({ programName, session, venue, onClose }) {
     body = (
       <>
         {stepBar(2)}
+        {change && (
+          <div className="tier-note" style={{ margin: "0 0 10px" }}>
+            原座位 <b>{change.oldTicket} {change.oldLabel}</b>　差額{" "}
+            <b>
+              NT$
+              {Math.max(0, (Number(t.p) || 0) - change.oldPrice).toLocaleString()}
+            </b>
+            ／席　·　只能選 1 個座位
+          </div>
+        )}
         <div className="tier-now">
           <span
             className="sw"
@@ -266,14 +353,16 @@ export default function SeatPicker({ programName, session, venue, onClose }) {
       `尚未選擇座位（最多 ${SEAT_MAX} 個單位；包廂整間為 1 單位）`
     );
     cancelText = "返回";
-    okText = "填寫購票資料";
-    onOk = () => {
-      if (!units.length) {
-        flash("請先點選座位");
-        return;
-      }
-      setStep("form");
-    };
+    okText = change ? (busy ? "處理中…" : "確認換位") : "填寫購票資料";
+    onOk = change
+      ? submitChange
+      : () => {
+          if (!units.length) {
+            flash("請先點選座位");
+            return;
+          }
+          setStep("form");
+        };
   }
 
   if (step === "form") {
@@ -423,7 +512,9 @@ export default function SeatPicker({ programName, session, venue, onClose }) {
       <div className="smodal on" style={step === "form" ? { width: 620 } : undefined}>
         <div className="sm-head">
           <div>
-            <h3 className="serif">{step === "form" ? "購票資料" : "選擇座位"}</h3>
+            <h3 className="serif">
+              {change ? "換位／升級" : step === "form" ? "購票資料" : "選擇座位"}
+            </h3>
             <p>
               {programName}
               {sub ? " · " + sub : ""}

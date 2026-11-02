@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import Qr from "./Qr";
 
 export default function TicketResult({ result, onClose }) {
@@ -49,7 +50,13 @@ export default function TicketResult({ result, onClose }) {
         </div>
 
         <div className="sm-foot">
-          <div className="picked">請於入場時出示 QR Code</div>
+          <div className="picked">
+            請於入場時出示 QR Code，或日後到{" "}
+            <Link href="/mypass" style={{ color: "var(--brand3)" }}>
+              我的票券
+            </Link>{" "}
+            用 Email 與手機查詢
+          </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="btn btn-ghost" onClick={() => window.print()}>
               列印 / 存成 PDF
