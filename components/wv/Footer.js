@@ -11,10 +11,16 @@ export default function Footer() {
           style={{ height: 30, width: "auto", margin: "0 auto 12px", display: "block", opacity: 0.9 }}
         />
         <p style={{ marginBottom: 14 }}>360° 全息舞台 · 裸視 3D 觀看 · 沉浸式場域娛樂</p>
-        <p style={{ fontSize: 12, opacity: 0.75 }}>
-          © {new Date().getFullYear()} Wonder V 沉浸式場域
-          <span style={{ margin: "0 10px", opacity: 0.4 }}>·</span>
-          <Link href="/programs">節目總覽</Link>
+        <div className="cols">
+          <Link href="/">首頁</Link>
+          <Link href="/programs">沉浸節目</Link>
+          <Link href="/#sessions">場域售票</Link>
+          <Link href="/mypass">我的票券</Link>
+          <Link href="/shop">3D 精選</Link>
+          <Link href="/vip">會員儲值</Link>
+        </div>
+        <p style={{ fontSize: 12, opacity: 0.75, marginTop: 14 }}>
+          © {new Date().getFullYear()} Wonder V · 沉浸式場域娛樂平台
         </p>
       </div>
     </footer>

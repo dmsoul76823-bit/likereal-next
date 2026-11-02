@@ -1,8 +1,6 @@
-import { MARQUEE } from "@/lib/wv-cms";
-
-export default function Marquee() {
-  if (!MARQUEE) return null;
-  const items = MARQUEE.split("｜").filter(Boolean);
+export default function Marquee({ text = "" }) {
+  const items = String(text || "").split("｜").filter(Boolean);
+  if (!items.length) return null;
   // CSS 的 @keyframes mq 位移 -50%，所以內容要剛好兩份才會無縫循環
   const doubled = [...items, ...items];
   return (

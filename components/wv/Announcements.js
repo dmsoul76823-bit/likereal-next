@@ -1,14 +1,13 @@
 "use client";
 import { useState } from "react";
-import { ANNOUNCEMENTS } from "@/lib/wv-cms";
 
-export default function Announcements() {
+export default function Announcements({ items = [] }) {
   const [open, setOpen] = useState(null);
-  if (!ANNOUNCEMENTS.length) return null;
+  if (!items.length) return null;
 
   return (
     <div className="ann">
-      {ANNOUNCEMENTS.map((a) => (
+      {items.map((a) => (
         <div
           key={a.id}
           className={`ann-i${open === a.id ? " open" : ""}`}

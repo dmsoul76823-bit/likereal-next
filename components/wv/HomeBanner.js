@@ -1,10 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BANNERS } from "@/lib/wv-cms";
 
-export default function HomeBanner({ pos = "頂部" }) {
-  const slides = BANNERS.filter((b) => b.on && b.pos === pos);
+export default function HomeBanner({ pos = "頂部", banners = [] }) {
+  const slides = banners.filter((b) => b.on !== false && b.pos === pos);
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
