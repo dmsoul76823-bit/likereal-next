@@ -2,8 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase, upsertMember } from "@/lib/supabase";
-import { C } from "@/lib/theme";
+import { supabase, updateMyProfile } from "@/lib/supabase";
 
 export default function LoginClient() {
   const router = useRouter();
@@ -16,12 +15,20 @@ export default function LoginClient() {
     phone: "",
   });
   const [err, setErr] = useState("");
+  const [ok, setOk] = useState("");
   const [busy, setBusy] = useState(false);
 
   const u = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
+  function switchMode(m) {
+    setMode(m);
+    setErr("");
+    setOk("");
+  }
+
   async function handleLogin() {
     setErr("");
+    setOk("");
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({
       email: form.email,
@@ -34,6 +41,7 @@ export default function LoginClient() {
 
   async function handleRegister() {
     setErr("");
+    setOk("");
     if (!form.name.trim()) return setErr("請填寫本名");
     if (form.password.length < 6) return setErr("密碼至少 6 個字元");
     if (form.password !== form.password2) return setErr("兩次密碼不一致");
@@ -52,28 +60,23 @@ export default function LoginClient() {
       );
     }
 
-    // 建立會員資料
+    // 會員資料列由 auth.users 的 trigger 自動建立，這裡只補姓名與電話。
+    // 若開了 email 驗證，此刻還沒有 session，更新會被 RLS 擋下，
+    // 等使用者驗證完回到 /auth/callback 再補。
     if (data.user) {
       try {
-        await upsertMember({
-          id: data.user.id,
-          email: form.email,
-          name: form.name,
-          phone: form.phone || null,
-        });
+        await updateMyProfile({ name: form.name, phone: form.phone || null });
       } catch (e) {
-        // RLS 需登入後才能寫，若 email 驗證開啟會在此失敗，稍後於 callback 補建
+        /* 交給 callback 補 */
       }
     }
     setBusy(false);
 
-    // 若專案未開 email 驗證，signUp 後即有 session
     if (data.session) {
       router.push("/account");
     } else {
-      setErr("");
       setMode("login");
-      alert("註冊成功！請直接登入。");
+      setOk("註冊成功，請用剛才的 Email 與密碼登入。");
     }
   }
 
@@ -84,71 +87,32 @@ export default function LoginClient() {
     });
   }
 
+  const submit = mode === "login" ? handleLogin : handleRegister;
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: C.bg,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: 400 }}>
-        <Link
-          href="/"
-          style={{
-            display: "block",
-            textAlign: "center",
-            fontSize: 22,
-            fontWeight: 700,
-            marginBottom: 4,
-          }}
-        >
-          LIKE <span style={{ fontWeight: 200 }}>REAL</span>
-        </Link>
-        <div
-          style={{
-            textAlign: "center",
-            fontSize: 12,
-            color: C.muted,
-            marginBottom: 24,
-          }}
-        >
-          會員{mode === "login" ? "登入" : "註冊"}
+    <div className="wv-root lg-wrap">
+      <div className="lg-box">
+        <div className="lg-head">
+          <Link href="/" aria-label="Wonder V 首頁">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="logo-img" src="/logo-wonderv.png" alt="Wonder V" />
+          </Link>
+          <div className="sub">{mode === "login" ? "Member Login" : "Join Wonder V"}</div>
         </div>
 
-        <div
-          style={{
-            background: "#fff",
-            border: `1px solid ${C.border}`,
-            borderRadius: 6,
-            padding: 28,
-          }}
-        >
-          <div style={{ display: "flex", marginBottom: 20 }}>
+        <div className="lg-card">
+          <div className="lg-tabs" role="tablist">
             {[
               ["login", "登入"],
               ["register", "註冊"],
             ].map(([m, label]) => (
               <button
                 key={m}
-                onClick={() => {
-                  setMode(m);
-                  setErr("");
-                }}
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  border: "none",
-                  borderBottom: `2px solid ${mode === m ? C.primary : C.border}`,
-                  background: "none",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  fontWeight: mode === m ? 700 : 400,
-                  color: mode === m ? C.text : C.sub,
-                }}
+                type="button"
+                role="tab"
+                aria-selected={mode === m}
+                className={mode === m ? "on" : undefined}
+                onClick={() => switchMode(m)}
               >
                 {label}
               </button>
@@ -156,15 +120,9 @@ export default function LoginClient() {
           </div>
 
           {mode === "register" && (
-            <FormRow
-              label="本名"
-              required
-              value={form.name}
-              onChange={(v) => u("name", v)}
-              ph="王小明"
-            />
+            <Fld label="本名" required value={form.name} onChange={(v) => u("name", v)} ph="王小明" />
           )}
-          <FormRow
+          <Fld
             label="Email（作為帳號）"
             required
             type="email"
@@ -172,7 +130,7 @@ export default function LoginClient() {
             onChange={(v) => u("email", v)}
             ph="you@example.com"
           />
-          <FormRow
+          <Fld
             label="密碼"
             required
             type="password"
@@ -183,14 +141,15 @@ export default function LoginClient() {
           />
           {mode === "register" && (
             <>
-              <FormRow
+              <Fld
                 label="再次輸入密碼"
                 required
                 type="password"
                 value={form.password2}
                 onChange={(v) => u("password2", v)}
+                onEnter={handleRegister}
               />
-              <FormRow
+              <Fld
                 label="手機（選填）"
                 value={form.phone}
                 onChange={(v) => u("phone", v)}
@@ -199,62 +158,26 @@ export default function LoginClient() {
             </>
           )}
 
-          {err && (
-            <div style={{ fontSize: 12, color: C.red, marginBottom: 12 }}>
-              {err}
-            </div>
-          )}
+          {err && <div className="lg-err">{err}</div>}
+          {ok && <div className="lg-ok">{ok}</div>}
 
           <button
-            onClick={mode === "login" ? handleLogin : handleRegister}
+            type="button"
+            className="btn btn-brand lg-submit"
+            onClick={submit}
             disabled={busy}
-            style={{
-              width: "100%",
-              padding: 13,
-              background: C.primary,
-              color: "#fff",
-              border: "none",
-              borderRadius: 3,
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: busy ? "wait" : "pointer",
-              marginBottom: 14,
-            }}
           >
-            {busy ? "處理中…" : mode === "login" ? "登入" : "註冊"}
+            {busy ? "處理中…" : mode === "login" ? "登入" : "建立帳號"}
           </button>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              margin: "6px 0 14px",
-            }}
-          >
-            <div style={{ flex: 1, height: 1, background: C.border }} />
-            <span style={{ fontSize: 11, color: C.muted }}>或</span>
-            <div style={{ flex: 1, height: 1, background: C.border }} />
+          <div className="lg-or">
+            <i />
+            <span>或</span>
+            <i />
           </div>
 
-          <button
-            onClick={handleGoogle}
-            style={{
-              width: "100%",
-              padding: 12,
-              background: "#fff",
-              border: `1px solid ${C.border}`,
-              borderRadius: 3,
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 48 48">
+          <button type="button" className="lg-google" onClick={handleGoogle}>
+            <svg width="17" height="17" viewBox="0 0 48 48" aria-hidden="true">
               <path
                 fill="#EA4335"
                 d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.7 30.1 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.3 17.6 9.5 24 9.5z"
@@ -276,30 +199,11 @@ export default function LoginClient() {
           </button>
 
           {mode === "register" && (
-            <div
-              style={{
-                fontSize: 10,
-                color: C.muted,
-                marginTop: 12,
-                lineHeight: 1.6,
-                textAlign: "center",
-              }}
-            >
-              使用 Google 註冊仍需補填本名等會員資料
-            </div>
+            <div className="lg-note">使用 Google 註冊後，仍需補填本名等會員資料</div>
           )}
         </div>
 
-        <Link
-          href="/"
-          style={{
-            display: "block",
-            textAlign: "center",
-            marginTop: 16,
-            fontSize: 12,
-            color: C.muted,
-          }}
-        >
+        <Link href="/" className="lg-back">
           ← 回到首頁
         </Link>
       </div>
@@ -307,29 +211,19 @@ export default function LoginClient() {
   );
 }
 
-function FormRow({ label, value, onChange, ph, type = "text", required, onEnter }) {
+function Fld({ label, value, onChange, ph, type = "text", required, onEnter }) {
   return (
-    <div style={{ marginBottom: 12 }}>
-      <div
-        style={{ fontSize: 11, fontWeight: 600, color: C.sub, marginBottom: 4 }}
-      >
+    <div className="lg-fld">
+      <label>
         {label}
-        {required && <span style={{ color: C.red }}> *</span>}
-      </div>
+        {required && <span className="req"> *</span>}
+      </label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && onEnter && onEnter()}
         placeholder={ph}
-        style={{
-          width: "100%",
-          padding: "10px 12px",
-          border: `1px solid ${C.border}`,
-          borderRadius: 3,
-          fontSize: 14,
-          outline: "none",
-        }}
       />
     </div>
   );

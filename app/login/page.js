@@ -1,4 +1,5 @@
 import LoginClient from "./LoginClient";
+import "../wv.css";
 
 export const metadata = {
   title: "會員登入 / 註冊",

@@ -1,12 +1,16 @@
-import { SITE_URL } from "@/lib/supabase";
+import { getSiteSeo } from "@/lib/seo";
 
-export default function robots() {
+export default async function robots() {
+  const { site_url } = await getSiteSeo();
+
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin", "/events/*/buy"],
+      // 後台、會員私人頁面與分潤儀表板都不該被索引。
+      // 原本還列了 /events/*/buy，那組路由已經移除。
+      disallow: ["/admin", "/account", "/login", "/auth", "/partner"],
     },
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: `${site_url}/sitemap.xml`,
   };
 }

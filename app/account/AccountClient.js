@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMember } from "@/components/MemberContext";
 import {
   getPointLogs,
-  getMemberOrders,
+  getMyOrders,
   getTiers,
 } from "@/lib/supabase";
 import { C } from "@/lib/theme";
@@ -25,7 +25,7 @@ export default function AccountClient() {
   useEffect(() => {
     if (member) {
       getPointLogs(member.id).then(setLogs);
-      getMemberOrders(member.id).then(setOrders);
+      getMyOrders(member.email).then(setOrders);
       getTiers().then(setTiers);
     }
   }, [member]);
@@ -50,11 +50,14 @@ export default function AccountClient() {
   const toNext = nextTier ? nextTier.min_spent - member.total_spent : 0;
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg }}>
+    // globals.css 的 body 文字是深色（淺色主題留下的），
+    // 這幾頁不在 (wv) 群組所以吃不到 wv.css，根元素要自己補文字色，
+    // 否則沒明寫 color 的標題會變成深色壓在深色卡片上，幾乎看不見。
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.text }}>
       {/* 頂部 */}
       <div
         style={{
-          background: "#fff",
+          background: C.surface,
           borderBottom: `1px solid ${C.border}`,
           padding: "0 16px",
           height: 54,
@@ -64,8 +67,9 @@ export default function AccountClient() {
           margin: "0 auto",
         }}
       >
-        <Link href="/" style={{ fontSize: 18, fontWeight: 700 }}>
-          LIKE <span style={{ fontWeight: 200 }}>REAL</span>
+        <Link href="/" aria-label="Wonder V 首頁" style={{ display: "flex", alignItems: "center" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-wonderv.png" alt="Wonder V" style={{ height: 26, width: "auto", display: "block" }} />
         </Link>
         <div style={{ flex: 1 }} />
         <button
@@ -161,7 +165,7 @@ export default function AccountClient() {
                       100,
                       (member.total_spent / nextTier.min_spent) * 100
                     )}%`,
-                    background: "#fff",
+                    background: C.surface,
                   }}
                 />
               </div>
@@ -182,7 +186,7 @@ export default function AccountClient() {
               style={{
                 padding: "8px 16px",
                 border: `1px solid ${tab === id ? C.primary : C.border}`,
-                background: tab === id ? C.primary : "#fff",
+                background: tab === id ? C.primary : C.surface,
                 color: tab === id ? "#fff" : C.sub,
                 borderRadius: 3,
                 fontSize: 13,
@@ -199,7 +203,7 @@ export default function AccountClient() {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div
               style={{
-                background: "#fff",
+                background: C.surface,
                 border: `1px solid ${C.border}`,
                 borderRadius: 6,
                 padding: 18,
@@ -222,7 +226,7 @@ export default function AccountClient() {
 
             <div
               style={{
-                background: "#fff",
+                background: C.surface,
                 border: `1px solid ${C.border}`,
                 borderRadius: 6,
                 padding: 18,
@@ -280,8 +284,9 @@ export default function AccountClient() {
                 lineHeight: 1.7,
               }}
             >
-              點數規則：購票後點數列為「待發放」，於<strong>活動結束 3 天後</strong>、
-              且票券已核銷入場，才正式發放至可用點數。
+              點數規則：購票後點數先列為「待發放」，於<strong>演出結束後</strong>
+              正式發放至可用點數；商品訂單則為<strong>購買後 10 天</strong>
+              （涵蓋審閱期與運送期）。
             </div>
           </div>
         )}
@@ -294,10 +299,10 @@ export default function AccountClient() {
             {orders.map((o) => (
               <Link
                 key={o.id}
-                href={`/ticket/${o.id}`}
+                href="/mypass"
                 style={{
                   display: "block",
-                  background: "#fff",
+                  background: C.surface,
                   border: `1px solid ${C.border}`,
                   borderRadius: 6,
                   padding: 16,
@@ -305,30 +310,16 @@ export default function AccountClient() {
                 }}
                 className="lr-card-hover"
               >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: 6,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: "monospace",
-                      fontSize: 12,
-                      color: C.accent,
-                      fontWeight: 700,
-                    }}
-                  >
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontFamily: "monospace", fontSize: 12, color: C.accent, fontWeight: 700 }}>
                     {o.id}
                   </span>
-                  <StatusBadge status={o.status} checkedIn={o.checked_in} />
+                  <StatusBadge status={o.status} checkedIn={o.used} />
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>
-                  {o.events?.title}
-                </div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{o.item || "—"}</div>
                 <div style={{ fontSize: 12, color: C.sub, marginBottom: 8 }}>
-                  {o.events?.date_text} · {o.events?.venue}
+                  {o.order_date}
+                  {o.pay ? ` · ${o.pay}` : ""}
                 </div>
                 <div
                   style={{
@@ -339,19 +330,13 @@ export default function AccountClient() {
                     borderTop: `1px solid ${C.borderL}`,
                   }}
                 >
-                  <span style={{ color: C.sub }}>
-                    {o.points_used > 0 && `折抵 ${o.points_used} 點 · `}
-                    {o.points_earned > 0 &&
-                      (o.points_released
-                        ? `已得 ${o.points_earned} 點`
-                        : `待發 ${o.points_earned} 點`)}
-                  </span>
+                  <span style={{ color: C.sub }}>{o.used ? "已入場" : ""}</span>
                   <span style={{ fontWeight: 700 }}>
-                    NT${o.total.toLocaleString()}
+                    NT${(Number(o.amt) || 0).toLocaleString()}
                   </span>
                 </div>
                 <div style={{ marginTop: 8, fontSize: 11, color: C.accent, textAlign: "right" }}>
-                  查看電子票券 →
+                  到「我的票券」查看 →
                 </div>
               </Link>
             ))}
@@ -361,7 +346,7 @@ export default function AccountClient() {
         {tab === "points" && (
           <div
             style={{
-              background: "#fff",
+              background: C.surface,
               border: `1px solid ${C.border}`,
               borderRadius: 6,
               overflow: "hidden",

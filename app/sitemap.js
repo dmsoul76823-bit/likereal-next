@@ -1,8 +1,10 @@
-import { SITE_URL } from "@/lib/supabase";
+import { getSiteSeo } from "@/lib/seo";
 import { getAllProgramNames, getProducts } from "@/lib/wv";
 
 export default async function sitemap() {
-  const base = SITE_URL || "https://likereal-next.vercel.app";
+  // 網址以後台「設定 → 網站網址」為準，不走環境變數
+  //（Vercel 上那個被鎖成 Secret 類型改不動，而且還指著舊網域）。
+  const { site_url: base } = await getSiteSeo();
   const now = new Date();
 
   const [names, products] = await Promise.all([getAllProgramNames(), getProducts()]);

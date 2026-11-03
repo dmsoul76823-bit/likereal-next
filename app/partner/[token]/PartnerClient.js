@@ -46,7 +46,7 @@ export default function PartnerClient({ token }) {
   const base = typeof window !== "undefined" ? window.location.origin : SITE_URL;
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg }}>
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.text }}>
       {/* 頂部 */}
       <div
         style={{
@@ -98,7 +98,7 @@ export default function PartnerClient({ token }) {
             <div
               key={x.label}
               style={{
-                background: "#fff",
+                background: C.surface,
                 border: `1px solid ${C.border}`,
                 borderRadius: 8,
                 padding: 16,
@@ -128,19 +128,27 @@ export default function PartnerClient({ token }) {
             onCopy={() => copy(`${base}/?ref=${data.code}`, "home")}
           />
 
+          {/*
+            節目推廣連結。event_slug 來自 get_affiliate_dashboard RPC，
+            而線上 events 資料表沒有 slug 欄位 —— 所以這個 filter 目前
+            會把所有項目濾掉，這一區實際上不會長出任何連結。
+            要讓它真的運作，得改 get_affiliate_dashboard 回傳 Wonder V
+            的節目名稱（對應 /programs/[name]）。路徑這裡先改對。
+          */}
           {(data.rules || [])
             .filter((r) => r.event_slug)
-            .map((r) => (
-              <LinkRow
-                key={r.event_slug}
-                label={r.event_title}
-                url={`${base}/events/${r.event_slug}?ref=${data.code}`}
-                copied={copied === r.event_slug}
-                onCopy={() =>
-                  copy(`${base}/events/${r.event_slug}?ref=${data.code}`, r.event_slug)
-                }
-              />
-            ))}
+            .map((r) => {
+              const link = `${base}/programs/${encodeURIComponent(r.event_slug)}?ref=${data.code}`;
+              return (
+                <LinkRow
+                  key={r.event_slug}
+                  label={r.event_title}
+                  url={link}
+                  copied={copied === r.event_slug}
+                  onCopy={() => copy(link, r.event_slug)}
+                />
+              );
+            })}
         </Section>
 
         {/* 分潤方案 */}
@@ -239,7 +247,7 @@ function Section({ title, children }) {
   return (
     <div
       style={{
-        background: "#fff",
+        background: C.surface,
         border: `1px solid ${C.border}`,
         borderRadius: 8,
         padding: 18,
@@ -330,6 +338,7 @@ function Empty({ text }) {
 
 const centerBox = {
   minHeight: "100vh",
+          color: C.text,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",

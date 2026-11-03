@@ -15,20 +15,23 @@ const NAV = [
   { href: "/about", label: "關於" },
 ];
 
-const MOBNAV = [{ href: "/", label: "首頁" }, ...NAV.slice(0, -1), { href: "/about", label: "關於 Wonder V" }];
+const MOBNAV = [
+  { href: "/", label: "首頁" },
+  ...NAV.slice(0, -1),
+  { href: "/about", label: "關於 Wonder V" },
+];
 
-function initial(m, user) {
-  const s = (m?.name || m?.email || user?.email || "").trim();
+function initial(member, user) {
+  const s = (member?.name || member?.email || user?.email || "").trim();
   return s ? s[0].toUpperCase() : "V";
 }
 
 export default function Header() {
   const pathname = usePathname();
-  const { user, member, loading } = useMember();
+  const { user, member, loading } = useMember() || {};
   const { count, setOpen, ready } = useFav();
   const [menu, setMenu] = useState(false);
 
-  // 換頁就把手機選單收起來
   useEffect(() => {
     setMenu(false);
   }, [pathname]);
@@ -36,6 +39,7 @@ export default function Header() {
   const isOn = (href) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 
+  const wallet = Number(member?.wallet) || 0;
   const tier = member?.member_tiers?.name;
 
   return (
@@ -69,10 +73,14 @@ export default function Header() {
         {user ? (
           <>
             <Link className="wallet" href="/vip">
-              💎 <b>{(Number(member?.wallet) || 0).toLocaleString()}</b> 幣
+              💎 <b>{wallet.toLocaleString()}</b> 幣
             </Link>
             {tier && <span className="vip">{tier}</span>}
-            <Link className="avatar" href="/account" title={member?.name || member?.email || "我的帳戶"}>
+            <Link
+              className="avatar"
+              href="/account"
+              title={member?.name || user.email || "我的帳戶"}
+            >
               {initial(member, user)}
             </Link>
           </>
@@ -103,7 +111,7 @@ export default function Header() {
         ))}
         {user ? (
           <Link href="/account" className={isOn("/account") ? "on" : undefined}>
-            我的帳戶（{(Number(member?.wallet) || 0).toLocaleString()} 幣）
+            我的帳戶（{wallet.toLocaleString()} 幣）
           </Link>
         ) : (
           <Link href="/login">登入 / 註冊</Link>

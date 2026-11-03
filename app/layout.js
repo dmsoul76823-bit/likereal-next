@@ -1,4 +1,4 @@
-import { getSettings, SITE_URL } from "@/lib/supabase";
+import { getSiteSeo } from "@/lib/seo";
 import Script from "next/script";
 import { MemberProvider } from "@/components/MemberContext";
 import Tracking from "@/components/Tracking";
@@ -7,22 +7,23 @@ import { Suspense } from "react";
 import "./globals.css";
 
 export async function generateMetadata() {
-  const s = await getSettings();
+  const s = await getSiteSeo();
   const title = s.site_title || "Wonder V｜沉浸式場域娛樂平台";
   const desc =
     s.site_desc ||
     "360° 全息舞台、裸視 3D 觀看與場域限定票券，Wonder V 沉浸式場域。";
-  const img = s.og_image || `${SITE_URL}/og-default.png`;
+  const base = s.site_url;
+  const img = s.og_image || `${base}/og-default.png`;
 
   return {
-    metadataBase: new URL(SITE_URL),
+    metadataBase: new URL(base),
     title: { default: title, template: `%s｜${s.site_name || "Wonder V"}` },
     description: desc,
     keywords: s.site_keywords?.split(",").map((k) => k.trim()),
     openGraph: {
       title,
       description: desc,
-      url: SITE_URL,
+      url: base,
       siteName: s.site_name || "Wonder V",
       images: [{ url: img, width: 1200, height: 630 }],
       locale: "zh_TW",
@@ -36,18 +37,18 @@ export async function generateMetadata() {
     },
     robots: { index: true, follow: true },
     verification: s.gsc_token ? { google: s.gsc_token } : undefined,
-    alternates: { canonical: SITE_URL },
+    alternates: { canonical: base },
   };
 }
 
 export default async function RootLayout({ children }) {
-  const s = await getSettings();
+  const s = await getSiteSeo();
 
   const orgJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: s.site_name || "Wonder V",
-    url: SITE_URL,
+    url: s.site_url,
     description: s.site_desc,
   };
 

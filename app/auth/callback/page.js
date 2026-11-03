@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase, getMember, upsertMember } from "@/lib/supabase";
+import { supabase, getMember, updateMyProfile } from "@/lib/supabase";
 import { C } from "@/lib/theme";
 
 export default function AuthCallback() {
@@ -35,9 +35,7 @@ export default function AuthCallback() {
   async function saveProfile() {
     if (!name.trim()) return;
     setBusy(true);
-    await upsertMember({
-      id: user.id,
-      email: user.email,
+    await updateMyProfile({
       name,
       phone: phone || null,
     });
@@ -50,6 +48,7 @@ export default function AuthCallback() {
       <div
         style={{
           minHeight: "100vh",
+          background: C.bg,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -65,6 +64,7 @@ export default function AuthCallback() {
       style={{
         minHeight: "100vh",
         background: C.bg,
+        color: C.text,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -75,7 +75,7 @@ export default function AuthCallback() {
         style={{
           width: "100%",
           maxWidth: 380,
-          background: "#fff",
+          background: C.surface,
           border: `1px solid ${C.border}`,
           borderRadius: 6,
           padding: 28,
