@@ -6,12 +6,14 @@ import { NAV, ROLE, toMe } from "@/lib/admin";
 import Dashboard from "./tabs/Dashboard";
 import Orders from "./tabs/Orders";
 import CheckIn from "./tabs/CheckIn";
+import Events from "./tabs/Events";
 import Placeholder from "./tabs/Placeholder";
 
 const TABS = {
   dash: Dashboard,
   orders: Orders,
   checkin: CheckIn,
+  events: Events,
 };
 
 export default function AdminShell() {
