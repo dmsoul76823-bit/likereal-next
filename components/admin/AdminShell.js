@@ -12,7 +12,8 @@ import Creators from "./tabs/Creators";
 import Staff from "./tabs/Staff";
 import Settings from "./tabs/Settings";
 import HomeLayout from "./tabs/HomeLayout";
-import Placeholder from "./tabs/Placeholder";
+import Members from "./tabs/Members";
+import Venues from "./tabs/Venues";
 
 const TABS = {
   dash: Dashboard,
@@ -24,6 +25,8 @@ const TABS = {
   staff: Staff,
   settings: Settings,
   home: HomeLayout,
+  members: Members,
+  venues: Venues,
 };
 
 export default function AdminShell() {
@@ -81,7 +84,7 @@ export default function AdminShell() {
 
   const nav = NAV.filter((n) => me.perms.includes(n.k));
   const cur = nav.find((n) => n.k === tab) || nav[0] || NAV[0];
-  const Active = TABS[cur.k] || Placeholder;
+  const Active = TABS[cur.k] || Dashboard;
 
   return (
     <div className="shell on">
