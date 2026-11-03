@@ -7,6 +7,9 @@ import Dashboard from "./tabs/Dashboard";
 import Orders from "./tabs/Orders";
 import CheckIn from "./tabs/CheckIn";
 import Events from "./tabs/Events";
+import Products from "./tabs/Products";
+import Creators from "./tabs/Creators";
+import Staff from "./tabs/Staff";
 import Placeholder from "./tabs/Placeholder";
 
 const TABS = {
@@ -14,6 +17,9 @@ const TABS = {
   orders: Orders,
   checkin: CheckIn,
   events: Events,
+  products: Products,
+  creators: Creators,
+  staff: Staff,
 };
 
 export default function AdminShell() {
