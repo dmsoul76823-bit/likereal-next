@@ -640,6 +640,8 @@
   .dine-block{margin-top:52px}
   .dine-split{display:grid;grid-template-columns:.9fr 1.1fr;gap:38px;align-items:center}
   .dine-split.rev .dine-pic{order:2}
+  /* 後台還沒上傳對應圖片時，文字區塊佔滿整列 */
+  .dine-split.solo{grid-template-columns:1fr}
   .dine-pic{aspect-ratio:4/3;border-radius:19px;border:1px solid var(--line);box-shadow:var(--shadow);
     background:#151020 center/cover no-repeat}
   .dine-txt p{color:var(--muted);font-size:14.5px;line-height:1.9;margin-bottom:10px}

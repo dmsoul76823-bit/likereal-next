@@ -84,7 +84,7 @@ async function main() {
 
   const next = {};
   let moved = 0;
-  let savedBytes = 0;
+  let base64Bytes = 0;
 
   for (const k of keys) {
     const v = String(images[k] ?? "");
@@ -107,7 +107,7 @@ async function main() {
     const name = `${k}.${EXT[mime] || "bin"}`;
 
     console.log(`搬移 ${k.padEnd(10)} ${mime.padEnd(12)} base64 ${kb(v.length)} → 檔案 ${kb(buf.length)}`);
-    savedBytes += v.length - buf.length;
+    base64Bytes += v.length;
     moved++;
 
     if (!APPLY) {
@@ -124,7 +124,10 @@ async function main() {
     next[k] = pub.publicUrl;
   }
 
-  console.log(`\n共 ${moved} 張圖，資料庫那一列可以少掉約 ${kb(savedBytes)}。`);
+  console.log(
+    `\n共 ${moved} 張圖。settings.images 這一列會從約 ${kb(base64Bytes)} 的 base64，` +
+      `換成 ${moved} 個短網址（1 KB 以下）。`
+  );
 
   if (!APPLY) {
     console.log("\n這是試跑，什麼都沒有改。確認上面沒問題就加 --apply 再跑一次：");

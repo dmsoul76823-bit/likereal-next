@@ -32,10 +32,8 @@ const SIGNATURE = [
 
 export default async function DiningPage() {
   const images = await getWvImages();
-  const bg = (k) => {
-    const src = resolveImg(images?.[k]);
-    return src ? { backgroundImage: `url("${src}")` } : undefined;
-  };
+  // 後台沒上傳的圖就不要留空框，讓文字佔滿版面
+  const pic = (k) => resolveImg(images?.[k]);
 
   return (
     <section>
@@ -71,8 +69,13 @@ export default async function DiningPage() {
         </div>
 
         <div className="dine-block">
-          <div className="dine-split">
-            <div className="dine-pic" style={bg("dine_food")} />
+          <div className={`dine-split${pic("dine_food") ? "" : " solo"}`}>
+            {pic("dine_food") && (
+              <div
+                className="dine-pic"
+                style={{ backgroundImage: `url("${pic("dine_food")}")` }}
+              />
+            )}
             <div className="dine-txt">
               <div className="sec-head">
                 <div>
@@ -95,8 +98,13 @@ export default async function DiningPage() {
         </div>
 
         <div className="dine-block">
-          <div className="dine-split rev">
-            <div className="dine-pic" style={bg("dine_drink")} />
+          <div className={`dine-split rev${pic("dine_drink") ? "" : " solo"}`}>
+            {pic("dine_drink") && (
+              <div
+                className="dine-pic"
+                style={{ backgroundImage: `url("${pic("dine_drink")}")` }}
+              />
+            )}
             <div className="dine-txt">
               <div className="sec-head">
                 <div>
@@ -126,7 +134,12 @@ export default async function DiningPage() {
           <div className="hg hg-3">
             {SIGNATURE.map(([key, title, body]) => (
               <div className="dcard" key={title}>
-                <div className="dc-pic" style={bg(key)} />
+                {pic(key) && (
+                  <div
+                    className="dc-pic"
+                    style={{ backgroundImage: `url("${pic(key)}")` }}
+                  />
+                )}
                 <h3>{title}</h3>
                 <p>{body}</p>
               </div>
