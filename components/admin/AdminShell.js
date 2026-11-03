@@ -167,10 +167,6 @@ function Login({ onIn }) {
         await supabase.auth.signOut();
         throw new Error("此帳號不在後台人員名單中");
       }
-      if (row.is_active === false) {
-        await supabase.auth.signOut();
-        throw new Error("此帳號已停用");
-      }
       onIn(toMe(row));
     } catch (e) {
       setErr(e?.message || "登入失敗");
