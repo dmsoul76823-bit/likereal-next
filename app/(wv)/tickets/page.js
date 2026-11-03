@@ -22,7 +22,8 @@ export default async function TicketsPage() {
         </div>
 
         <p style={{ color: "var(--muted)", margin: "-14px 0 24px", fontSize: 14 }}>
-          共 {sessions.length.toLocaleString()} 個開放中的場次。點卡片進入節目頁即可選位購票。
+          最近的 {sessions.length.toLocaleString()} 個場次，依日期排序。點卡片進入節目頁即可選位購票；
+          更遠的日期可以到<a href="/programs" style={{ color: "var(--brand3)" }}>節目總覽</a>裡查看該節目的全部場次。
         </p>
 
         <TicketGrid sessions={sessions} />
