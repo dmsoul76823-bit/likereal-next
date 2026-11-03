@@ -110,7 +110,7 @@ export default async function WonderVHome() {
                 <span className="tag">VENUE · 場域售票</span>
                 <h2 className="serif">現場沉浸門票</h2>
               </div>
-              <Link href="/programs" className="more">
+              <Link href="/tickets" className="more">
                 觀看更多 →
               </Link>
             </div>

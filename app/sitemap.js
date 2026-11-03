@@ -10,6 +10,7 @@ export default async function sitemap() {
   return [
     { url: `${base}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${base}/programs`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    { url: `${base}/tickets`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
     { url: `${base}/shop`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${base}/live`, lastModified: now, changeFrequency: "hourly", priority: 0.6 },
     { url: `${base}/ai`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },

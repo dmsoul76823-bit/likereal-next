@@ -16,7 +16,7 @@ export default function Footer() {
           <Link href="/programs">沉浸節目</Link>
           <Link href="/live">直播大廳</Link>
           <Link href="/ai">AI 夥伴</Link>
-          <Link href="/#sessions">場域售票</Link>
+          <Link href="/tickets">場域售票</Link>
           <Link href="/mypass">我的票券</Link>
           <Link href="/shop">3D 精選</Link>
           <Link href="/vip">會員儲值</Link>
