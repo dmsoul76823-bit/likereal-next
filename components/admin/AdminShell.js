@@ -10,6 +10,8 @@ import Events from "./tabs/Events";
 import Products from "./tabs/Products";
 import Creators from "./tabs/Creators";
 import Staff from "./tabs/Staff";
+import Settings from "./tabs/Settings";
+import HomeLayout from "./tabs/HomeLayout";
 import Placeholder from "./tabs/Placeholder";
 
 const TABS = {
@@ -20,6 +22,8 @@ const TABS = {
   products: Products,
   creators: Creators,
   staff: Staff,
+  settings: Settings,
+  home: HomeLayout,
 };
 
 export default function AdminShell() {
