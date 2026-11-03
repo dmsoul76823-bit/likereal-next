@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCreators } from "@/lib/wv";
+import FavHeart from "@/components/wv/FavHeart";
 
 export const revalidate = 300;
 
@@ -48,6 +49,13 @@ export default async function AiPage() {
                     </span>
                     <span className="om-tag type">{c.type}</span>
                   </div>
+                  <FavHeart
+                    k={`cr:${c.slug}`}
+                    name={c.name}
+                    sub={c.type || ""}
+                    img={c.img}
+                    go="/ai"
+                  />
                   <div className={`om-status ${c.online ? "on" : "off"}`}>
                     <span className="d" />
                     {c.online ? "在線" : "離線"}

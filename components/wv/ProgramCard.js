@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { parseDate } from "@/lib/wv";
+import FavHeart from "./FavHeart";
 
 export default function ProgramCard({ program }) {
   const d = parseDate(program.firstDate);
@@ -11,6 +12,13 @@ export default function ProgramCard({ program }) {
         className="pic"
         style={program.img ? { backgroundImage: `url("${program.img}")` } : undefined}
       >
+        <FavHeart
+          k={`prog:${program.slug}`}
+          name={program.name}
+          sub={program.venue || program.intro || ""}
+          img={program.img}
+          go={`/programs/${program.slug}`}
+        />
         {program.isLive && <span className="live-tag sm">● LIVE</span>}
         {hasSession && (
           <span className="badge-n">{program.sessionCount} 場</span>

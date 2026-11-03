@@ -1,4 +1,5 @@
 import Link from "next/link";
+import FavHeart from "./FavHeart";
 
 export default function ProductCard({ product }) {
   const p = product;
@@ -9,6 +10,13 @@ export default function ProductCard({ product }) {
         style={p.img ? { backgroundImage: `url("${p.img}")` } : undefined}
       >
         {p.badge && <div className="badge">{p.badge}</div>}
+        <FavHeart
+          k={`pd:${p.id}`}
+          name={p.name}
+          sub={`NT$${Number(p.price || 0).toLocaleString()}`}
+          img={p.img}
+          go={`/shop/${p.id}`}
+        />
       </div>
       <div className="prod-body">
         <h4>{p.name}</h4>

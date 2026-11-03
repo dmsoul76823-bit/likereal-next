@@ -2,6 +2,8 @@ import "../wv.css";
 import { getWvSettings } from "@/lib/wv";
 import { MARQUEE_DEFAULT } from "@/lib/wv-cms";
 import Header from "@/components/wv/Header";
+import { FavProvider } from "@/components/wv/FavContext";
+import FavDrawer from "@/components/wv/FavDrawer";
 import Marquee from "@/components/wv/Marquee";
 import Footer from "@/components/wv/Footer";
 import Tilt from "@/components/wv/Tilt";
@@ -13,12 +15,15 @@ export default async function WonderVLayout({ children }) {
   const marquee = typeof s.marquee === "string" ? s.marquee : MARQUEE_DEFAULT;
 
   return (
-    <div className="wv-root">
-      <Header />
-      <Marquee text={marquee} />
-      <main>{children}</main>
-      <Footer />
-      <Tilt />
-    </div>
+    <FavProvider>
+      <div className="wv-root">
+        <Header />
+        <Marquee text={marquee} />
+        <main>{children}</main>
+        <Footer />
+        <Tilt />
+        <FavDrawer />
+      </div>
+    </FavProvider>
   );
 }

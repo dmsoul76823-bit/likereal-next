@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { parseDate } from "@/lib/wv";
+import FavHeart from "./FavHeart";
 
 const PAGE = 24;
 
@@ -63,6 +64,15 @@ export default function TicketGrid({ sessions = [] }) {
                       <span>{d.m}月</span>
                     </div>
                   )}
+                  <FavHeart
+                    k={`tk:${s.id}`}
+                    name={s.name}
+                    sub={`${d ? `${d.m}/${d.d} ` : ""}${s.time || ""}${
+                      s.price > 0 ? ` · NT$${s.price.toLocaleString()}` : ""
+                    }`}
+                    img={s.img}
+                    go={`/programs/${s.slug}`}
+                  />
                   {s.isLive && <span className="live-tag sm">● LIVE</span>}
                 </div>
                 <div className="tbody">

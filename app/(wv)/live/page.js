@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getLivePrograms } from "@/lib/wv";
+import FavHeart from "@/components/wv/FavHeart";
 
 export const revalidate = 60;
 
@@ -45,6 +46,13 @@ export default async function LivePage() {
                       backgroundImage: l.img ? `url("${l.img}")` : undefined,
                     }}
                   >
+                    <FavHeart
+                      k={`live:${l.slug || l.name}`}
+                      name={l.title || l.name}
+                      sub={l.name || ""}
+                      img={l.img}
+                      go={l.url || `/programs/${l.slug}`}
+                    />
                     <div className="lb">
                       <span className="pulse" />
                       LIVE
