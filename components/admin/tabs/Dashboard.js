@@ -4,6 +4,25 @@ import { supabase } from "@/lib/supabase";
 import { money, tpeTime } from "@/lib/admin";
 import OrderTable from "../OrderTable";
 
+/**
+ * events 有 1154 筆，Supabase 單次查詢上限 1000 筆，
+ * 直接 select 會少算約 150 場的席次。分頁撈完整。
+ */
+async function fetchAllSoldCap() {
+  const PAGE = 1000;
+  const out = [];
+  for (let from = 0; from < 20000; from += PAGE) {
+    const { data, error } = await supabase
+      .from("events")
+      .select("sold,cap")
+      .range(from, from + PAGE - 1);
+    if (error || !data?.length) break;
+    out.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return out;
+}
+
 export default function Dashboard() {
   const [d, setD] = useState(null);
   const [err, setErr] = useState("");
@@ -26,14 +45,14 @@ export default function Dashboard() {
             .order("show_date", { ascending: true })
             .order("show_time", { ascending: true })
             .limit(12),
-          supabase.from("events").select("sold,cap"),
+          fetchAllSoldCap(),
         ]);
 
         if (!alive) return;
 
         const os = orders.data || [];
         const rev = os.filter((o) => o.status === "已付款").reduce((s, o) => s + (Number(o.amt) || 0), 0);
-        const evs = evAgg.data || [];
+        const evs = evAgg;
         const sold = evs.reduce((s, e) => s + (Number(e.sold) || 0), 0);
         const cap = evs.reduce((s, e) => s + (Number(e.cap) || 0), 0);
 
