@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { rowLabel, sid, normStage } from "@/lib/wv-seats";
 
@@ -51,6 +51,21 @@ export default function VenueEditor({ venue, flash, onClose, onSaved }) {
 
   const previewSet = useMemo(() => new Set(preview), [preview]);
   const selSet = useMemo(() => new Set(sel), [sel]);
+
+  // Esc 取消框選
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (anchor || sel.length) {
+        e.stopPropagation();
+        setAnchor(null);
+        setHover(null);
+        setSel([]);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [anchor, sel.length]);
 
   function clickCell(id) {
     if (!anchor) {
@@ -201,9 +216,9 @@ export default function VenueEditor({ venue, flash, onClose, onSaved }) {
                 <button className="btn btn-ghost btn-sm" onClick={() => act("unbox")}>取消包廂</button>
                 <span className="sel-info">
                   {anchor
-                    ? `選取中… ${preview.length} 格（再點一下確定）`
+                    ? `選取中… ${preview.length} 格（再點一下確定，Esc 取消）`
                     : sel.length
-                    ? `已框選 ${sel.length} 格，請按上方動作套用`
+                    ? `已框選 ${sel.length} 格，請按上方動作套用（Esc 取消）`
                     : "尚未框選"}
                 </span>
               </div>
