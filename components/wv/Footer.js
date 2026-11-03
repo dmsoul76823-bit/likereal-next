@@ -14,10 +14,14 @@ export default function Footer() {
         <div className="cols">
           <Link href="/">首頁</Link>
           <Link href="/programs">沉浸節目</Link>
+          <Link href="/live">直播大廳</Link>
+          <Link href="/ai">AI 夥伴</Link>
           <Link href="/#sessions">場域售票</Link>
           <Link href="/mypass">我的票券</Link>
           <Link href="/shop">3D 精選</Link>
           <Link href="/vip">會員儲值</Link>
+          <Link href="/dining">沉浸餐飲</Link>
+          <Link href="/about">關於 Wonder V</Link>
         </div>
         <p style={{ fontSize: 12, opacity: 0.75, marginTop: 14 }}>
           © {new Date().getFullYear()} Wonder V · 沉浸式場域娛樂平台

@@ -6,6 +6,8 @@ const NAV = [
   { href: "/mypass", label: "我的票券" },
   { href: "/shop", label: "3D 精選" },
   { href: "/vip", label: "會員儲值" },
+  { href: "/dining", label: "沉浸餐飲" },
+  { href: "/about", label: "關於" },
 ];
 
 export default function Header() {

@@ -42,3 +42,6 @@ next-env.d.ts
 
 # macOS/FUSE 暫存
 .fuse_hidden*
+
+# 圖片搬移前的備份（含大量 base64，不要進 git）
+backups/
