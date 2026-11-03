@@ -33,6 +33,8 @@ export async function generateMetadata({ params }) {
   return {
     title: program.name,
     description: desc,
+    // 用 raw（網址裡的原字串）而不是 name，才會跟實際網址一致
+    alternates: { canonical: `/programs/${raw}` },
     openGraph: {
       title: `${program.name}｜Wonder V`,
       description: desc,

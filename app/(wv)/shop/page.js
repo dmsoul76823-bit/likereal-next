@@ -4,6 +4,7 @@ import ProductCard from "@/components/wv/ProductCard";
 export const revalidate = 300;
 
 export const metadata = {
+  alternates: { canonical: "/shop" },
   title: "裸視 3D 精選",
   description: "裸視 3D 手機膜、平板膜與 3D 眼鏡等沉浸觀看裝備，不用戴眼鏡也能看出立體感。",
 };

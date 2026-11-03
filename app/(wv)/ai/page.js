@@ -7,6 +7,7 @@ export const revalidate = 300;
 const OM_URL = process.env.NEXT_PUBLIC_ONLYMATE_URL || "";
 
 export const metadata = {
+  alternates: { canonical: "/ai" },
   title: "AI 夥伴",
   description: "OnlyMate AI 夥伴：專屬 AI 分身，語音對話與即時互動。",
 };

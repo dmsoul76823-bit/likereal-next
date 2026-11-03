@@ -26,6 +26,7 @@ import PlanCard from "@/components/wv/PlanCard";
 export const revalidate = 300;
 
 export const metadata = {
+  alternates: { canonical: "/" },
   title: { absolute: "Wonder V｜沉浸式場域娛樂平台" },
   description:
     "360° 全息舞台、裸視 3D 觀看與場域限定票券。Wonder V 沉浸式場域，在同一個空間裡完整體驗虛實整合的演出。",

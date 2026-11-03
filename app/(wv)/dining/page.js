@@ -4,6 +4,7 @@ import { getWvImages, resolveImg } from "@/lib/wv";
 export const revalidate = 300;
 
 export const metadata = {
+  alternates: { canonical: "/dining" },
   title: "沉浸餐飲",
   description:
     "餐飲是表演情緒的延伸。Wonder V 每一檔演出都有專屬的餐點與調飲，讓味覺成為記憶的一部分。",

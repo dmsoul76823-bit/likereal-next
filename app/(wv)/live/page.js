@@ -5,6 +5,7 @@ import FavHeart from "@/components/wv/FavHeart";
 export const revalidate = 60;
 
 export const metadata = {
+  alternates: { canonical: "/live" },
   title: "直播大廳",
   description: "Wonder V 直播大廳：沉浸節目的現場直播與互動連麥。",
 };

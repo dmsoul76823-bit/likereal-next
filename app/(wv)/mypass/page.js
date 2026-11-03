@@ -3,6 +3,7 @@ import { getVenues } from "@/lib/wv";
 import MyPass from "@/components/wv/MyPass";
 
 export const metadata = {
+  alternates: { canonical: "/mypass" },
   title: "我的票券",
   description: "查詢 Wonder V 電子票券、出示入場 QR Code，或辦理換位／升級。",
   robots: { index: false, follow: false },

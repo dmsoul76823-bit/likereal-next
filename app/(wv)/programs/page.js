@@ -4,6 +4,7 @@ import ProgramCard from "@/components/wv/ProgramCard";
 export const revalidate = 300;
 
 export const metadata = {
+  alternates: { canonical: "/programs" },
   title: "沉浸節目總覽",
   description:
     "Wonder V 沉浸式場域所有演出節目：360° 全息舞台、裸視 3D 體驗與場域限定演出，查看完整節目與場次。",

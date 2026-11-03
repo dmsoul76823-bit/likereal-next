@@ -37,7 +37,9 @@ export async function generateMetadata() {
     },
     robots: { index: true, follow: true },
     verification: s.gsc_token ? { google: s.gsc_token } : undefined,
-    alternates: { canonical: base },
+    // 這裡「不」設 canonical。全域設一個值的話，每一頁都會繼承成首頁，
+    // 等於告訴 Google「所有頁面都是首頁的重複內容」，
+    // 會跟 sitemap 的 73 個網址直接打架。canonical 由各頁自己宣告。
   };
 }
 

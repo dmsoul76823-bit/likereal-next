@@ -4,6 +4,7 @@ import TicketGrid from "@/components/wv/TicketGrid";
 export const revalidate = 300;
 
 export const metadata = {
+  alternates: { canonical: "/tickets" },
   title: "場域售票",
   description: "Wonder V 沉浸式場域的所有開放場次，依日期排序，可直接選位購票。",
 };

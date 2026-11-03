@@ -2,6 +2,7 @@ import { PLANS } from "@/lib/wv-cms";
 import PlanCard from "@/components/wv/PlanCard";
 
 export const metadata = {
+  alternates: { canonical: "/vip" },
   title: "會員儲值",
   description: "Wonder V 會員儲值方案：沉浸節目畫質、AI 夥伴語音、電商折扣與場域門票優先購。",
 };

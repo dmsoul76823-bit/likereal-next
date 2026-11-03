@@ -4,6 +4,7 @@ import { getWvImages, resolveImg } from "@/lib/wv";
 export const revalidate = 300;
 
 export const metadata = {
+  alternates: { canonical: "/about" },
   title: "關於 Wonder V",
   description:
     "Wonder V 為台灣領先的沉浸式場域品牌，擁有 LED 背景屏、巨型 Dome 結合投影與空間音訊，打造 AI 娛樂展演新天地。",

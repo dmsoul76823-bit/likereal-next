@@ -18,6 +18,7 @@ export async function generateMetadata({ params }) {
   return {
     title: p.name,
     description: p.intro || p.sub || `${p.name}｜Wonder V 裸視 3D 精選`,
+    alternates: { canonical: `/shop/${id}` },
   };
 }
 
