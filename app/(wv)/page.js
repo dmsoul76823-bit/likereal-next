@@ -70,6 +70,15 @@ export default async function WonderVHome() {
 
   return (
     <>
+      {/*
+        開場順序 2026-11-04 調整：原本是「橫幅 → 公告 → 全息舞台」，
+        訪客第一眼看到的是一個扁平的紫色方塊，而最能表現「沉浸」的
+        全息舞台視覺被三行公告推到第一屏以下。
+        一個主打 360° 全息的網站，開場不該是全頁最不沉浸的元素。
+        改成舞台先行，橫幅與公告往下移。
+      */}
+      <Stage program={hero} programCount={all.length} sessionCount={totalSessions} />
+
       <div className="wrap">
         <HomeBanner pos="頂部" banners={banners} />
       </div>
@@ -77,8 +86,6 @@ export default async function WonderVHome() {
       <div className="wrap">
         <Announcements items={announcements} />
       </div>
-
-      <Stage program={hero} programCount={all.length} sessionCount={totalSessions} />
 
       {/* 正在沉浸放送 */}
       {progRow.length > 0 && (

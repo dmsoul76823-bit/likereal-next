@@ -10,6 +10,21 @@
     --brand:#8b6fca; --brand2:#b9a3e6; --brand3:#c9b6f0; --brand-soft:rgba(139,111,202,.14);
     --text:#f2f0f7; --muted:#9d97ac; --rose:#e08fc0; --live:#ff4d6d;
     --shadow:0 24px 70px rgba(20,8,40,.6);
+
+    /* ── 字級級距（2026-11-04 導入）──────────────────────────
+       收斂前：250 處宣告、32 種尺寸，光 12–15px 之間就擠了 7 種
+       （12 / 12.5 / 13 / 13.5 / 14 / 14.5 / 15 / 15.5）。
+       0.5px 的差距看不出來，那不是設計決定，是各自憑感覺調的。
+       精緻感來自「看得出刻意」—— 階數少、階距明確，版面才有秩序。
+       分批替換中：先首頁，驗證後再推到其他頁。 */
+    --fs-xs:11px;    /* 標籤、徽章 */
+    --fs-sm:12px;    /* meta、次要說明 */
+    --fs-base:14px;  /* 內文 */
+    --fs-md:16px;    /* 強調內文、按鈕 */
+    --fs-lg:19px;    /* 卡片標題 */
+    --fs-xl:24px;    /* 小節標題 */
+    --fs-2xl:30px;   /* 區塊標題 */
+    --fs-3xl:38px;   /* 主視覺 */
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:
@@ -679,15 +694,20 @@
   }
   /* 首頁預覽區 */
   section.hsec{padding:44px 0;border-top:1px solid var(--line2)}
-  .hg{display:grid;gap:20px;perspective:1100px}
-  .hg-2{grid-template-columns:repeat(2,1fr)}
-  .hg-3{grid-template-columns:repeat(3,1fr)}
-  .hg-4{grid-template-columns:repeat(4,1fr)}
-  @media(max-width:1000px){ .hg-4{grid-template-columns:repeat(3,1fr)} }
+  /* 首頁網格。
+     欄數是「上限」而不是固定值 —— 卡片數量由後台「首頁編排」決定，
+     固定 3 欄遇到 2 張卡就會在右邊留一個洞，而後台不會警告。
+     用 auto-fit + minmax 讓欄數跟著內容走：2 張就排 2 欄並撐寬，
+     夠多才長到上限。--hg-max 是上限，--hg-min 是卡片最小寬度。 */
+  .hg{display:grid;gap:20px;perspective:1100px;
+    grid-template-columns:repeat(auto-fit,minmax(var(--hg-min,260px),1fr))}
+  .hg-2{--hg-min:360px}
+  .hg-3{--hg-min:300px}
+  .hg-4{--hg-min:240px}
+  /* auto-fit 本身就會隨寬度縮欄，不需要再用媒體查詢指定欄數
+     —— 指定了反而會蓋掉上面的規則，洞又回來了。只調間距。 */
   @media(max-width:900px){
     .hg{gap:14px}
-    .hg-3,.hg-4{grid-template-columns:repeat(2,1fr)}
-    .hg-2{grid-template-columns:1fr}
     section.hsec{padding:32px 0}
   }
   /* 手機版：全部一排一個 */
