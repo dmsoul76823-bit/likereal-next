@@ -222,7 +222,7 @@ export default async function WonderVHome() {
         </section>
       )}
 
-      <div className="wrap" style={{ paddingTop: 8 }}>
+      <div className="wrap" style={{ paddingTop: "var(--sp-1)" }}>
         <HomeBanner pos="底部" banners={banners} />
       </div>
     </>

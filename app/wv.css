@@ -34,6 +34,19 @@
     /* 以下兩個刻意不在級距內，各有硬理由，別順手併進上面七階： */
     --fs-input:16px; /* 表單輸入框。低於 16px，iOS Safari 一 focus 就放大整頁 */
     --fs-micro:10px; /* 座位圖排號／列號。格子只有 --cw(20px) 寬，等同圖表軸標 */
+
+    /* ── 垂直節奏（2026-11-04 導入）──────────────────────
+       收斂前首頁由上到下是 42 / 22 / 45 / 89 / 89 / 89 / 89 / 74 / 72，
+       七個值裡 42 和 45、72 和 74 只差 2–3px —— 差太少看不出刻意，
+       差太多又不一致。跟價格曾有 18/19/20/22 四種是同一個病。
+       只留三階，頁面節奏由「區塊留白相鄰」自然產生 88：
+         --sp-1 同一組內部（橫幅↔公告，刻意收緊以示成組）
+         --sp-2 區塊標題到內容
+         --sp-3 區塊自身上下留白；兩區塊相鄰即 2×44=88，是全頁主節奏
+       手機版只覆寫這三個值，不再逐條改選擇器。 */
+    --sp-1:22px;
+    --sp-2:28px;
+    --sp-3:44px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:
@@ -76,7 +89,10 @@
   .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--rose));display:grid;place-items:center;font-weight:700;color:#fff;cursor:pointer}
   .vip{font-size:var(--fs-xs);letter-spacing:1px;border:1px solid var(--line);color:var(--brand3);padding:2px 8px;border-radius:999px}
 
-  .stage{padding:44px 0 20px}
+  /* 權重要比 .wrap 高：主視覺的元素是 class="wrap stage"，而手機區塊裡
+     的 .wrap{padding:0 16px} 是簡寫又排在後面，同權重會贏、把上下留白
+     歸零。水平維持 0 是原本就有的設計：主視覺比其他內容寬一些。 */
+  .wrap.stage{padding:var(--sp-3) 0 var(--sp-1)}
   .stage-eyebrow{color:var(--brand3);letter-spacing:5px;font-size:var(--fs-xs);margin-bottom:16px;text-align:center}
   .player{position:relative;border-radius:26px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow);
     aspect-ratio:21/9;min-height:380px;
@@ -113,8 +129,8 @@
   .stage-stat{display:flex;gap:30px;justify-content:center;margin-top:26px;color:var(--muted);font-size:13px;flex-wrap:wrap}
   .stage-stat b{color:var(--brand3);font-size:var(--fs-xl);display:block;font-weight:800}
 
-  section{padding:52px 0;border-top:1px solid var(--line2)}
-  .sec-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:28px;gap:16px}
+  section{padding:var(--sp-3) 0;border-top:1px solid var(--line2)}
+  .sec-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:var(--sp-2);gap:16px}
   .sec-head h2{font-size:var(--fs-2xl);font-weight:800;letter-spacing:1px}
   .sec-head .tag{color:var(--brand3);letter-spacing:3px;font-size:var(--fs-xs);display:block;margin-bottom:8px}
   .sec-head a.more{color:var(--muted);font-size:var(--fs-sm);border:1px solid var(--line2);padding:8px 16px;border-radius:999px}
@@ -256,7 +272,8 @@
   .cart-fab{position:fixed;bottom:22px;right:22px;z-index:120;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand2));display:grid;place-items:center;font-size:24px;cursor:pointer;box-shadow:0 10px 30px rgba(139,111,202,.5);border:none}
   .cart-fab .count{position:absolute;top:-4px;right:-4px;background:var(--live);color:#fff;font-size:var(--fs-xs);font-weight:700;width:24px;height:24px;border-radius:50%;display:grid;place-items:center}
 
-  footer{border-top:1px solid var(--line2);padding:40px 0;color:var(--muted);font-size:var(--fs-sm);text-align:center}
+  footer{border-top:1px solid var(--line2);margin-top:calc(var(--sp-3) * 2);padding:var(--sp-3) 0;
+    color:var(--muted);font-size:var(--fs-sm);text-align:center}
   footer .cols{display:flex;justify-content:center;gap:36px;flex-wrap:wrap;margin-bottom:18px}
   footer a:hover{color:var(--brand3)}
   .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 22px;font-size:var(--fs-base);z-index:400;transition:.35s;opacity:0}
@@ -677,7 +694,7 @@
   .dine-pic{aspect-ratio:4/3;border-radius:19px;border:1px solid var(--line);box-shadow:var(--shadow);
     background:#151020 center/cover no-repeat}
   .dine-txt p{color:var(--muted);font-size:var(--fs-base);line-height:1.9;margin-bottom:10px}
-  .dine-txt .sec-head{margin-bottom:16px}
+  .dine-txt .sec-head{margin-bottom:var(--sp-1)}  /* 圖文並排時標題貼緊一點，但仍在級距上 */
   .drink-tags{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
   .drink-tags span{background:var(--brand-soft);border:1px solid var(--line);color:var(--brand3);
     border-radius:999px;padding:9px 16px;font-size:var(--fs-sm)}
@@ -709,7 +726,7 @@
     .pair .pr{padding-left:44px;border-left:none;border-top:1px dashed var(--line);padding-top:9px}
   }
   /* 首頁預覽區 */
-  section.hsec{padding:44px 0;border-top:1px solid var(--line2)}
+  section.hsec{padding:var(--sp-3) 0;border-top:1px solid var(--line2)}
   /* 首頁網格。
      欄數是「上限」而不是固定值 —— 卡片數量由後台「首頁編排」決定，
      固定 3 欄遇到 2 張卡就會在右邊留一個洞，而後台不會警告。
@@ -724,7 +741,6 @@
      —— 指定了反而會蓋掉上面的規則，洞又回來了。只調間距。 */
   @media(max-width:900px){
     .hg{gap:14px}
-    section.hsec{padding:32px 0}
   }
   /* 手機版：節目卡與推廣位一排一個（它們是橫式圖＋多行文字，
      擠成兩欄會兩邊都讀不清）；商品卡一排兩個 —— 縮圖是正方形、
@@ -811,7 +827,7 @@
   /* 內容剛好複製成兩份，位移 -50% 即為無縫循環 */
   @keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
   @media(prefers-reduced-motion:reduce){.mq-track{animation:none}}
-  .bn{margin:22px 0 0;border-radius:18px;overflow:hidden;position:relative;min-height:150px;border:1px solid var(--line);
+  .bn{margin:var(--sp-1) 0 0;border-radius:18px;overflow:hidden;position:relative;min-height:150px;border:1px solid var(--line);
     background:linear-gradient(120deg,#2a1f45,#150f26);display:none}
   .bn.on{display:block}
   .bn-slide{position:absolute;inset:0;display:grid;place-content:center;text-align:center;padding:24px;opacity:0;transition:.6s;
@@ -822,7 +838,7 @@
   .bn-dots{position:absolute;bottom:12px;left:0;right:0;display:flex;gap:7px;justify-content:center;z-index:3}
   .bn-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);cursor:pointer}
   .bn-dots i.on{background:var(--brand2);width:20px;border-radius:99px}
-  .ann{margin-top:22px;display:grid;gap:10px}
+  .ann{margin:var(--sp-1) 0 var(--sp-3);display:grid;gap:10px}
   .ann:empty{display:none}
   .ann-i{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line2);border-radius:13px;padding:13px 16px;cursor:pointer}
   .ann-i:hover{border-color:var(--line)}
@@ -889,6 +905,7 @@
   }
   /* ===== 手機優化 ===== */
   @media(max-width:640px){
+    :root{--sp-1:16px;--sp-2:20px;--sp-3:32px}
     .wrap{padding:0 16px}
     .nav{height:62px;gap:10px}
     .logo-img{height:28px}
@@ -896,13 +913,10 @@
     .favtop{padding:7px 10px}
     .wallet{padding:7px 11px;font-size:12px}
     .avatar{width:34px;height:34px;font-size:14px}
-    section{padding:34px 0}
-    .sec-head{margin-bottom:20px}
     .sec-head h2{font-size:23px}
     .sec-head a.more{padding:6px 12px;font-size:12px}
     .home-grid{grid-template-columns:1fr;gap:14px;margin-top:26px}
     .hcard{padding:20px}.hcard p{min-height:0}
-    .stage{padding:26px 0 12px}
     .player{min-height:240px;border-radius:18px}
     .player .caption{padding:18px 16px 16px}
     .player .caption h1{font-size:19px}.player .caption p{font-size:12px}

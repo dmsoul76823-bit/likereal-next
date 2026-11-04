@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer style={{ marginTop: 72, borderTop: "1px solid var(--line2)", padding: "34px 0 48px" }}>
+    <footer>
       <div className="wrap" style={{ textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-sm)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
