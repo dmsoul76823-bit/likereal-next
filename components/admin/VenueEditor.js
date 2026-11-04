@@ -172,7 +172,7 @@ export default function VenueEditor({ venue, flash, onClose, onSaved }) {
         <div className="modal-body">
           <div className="fgrid">
             <div className="fld"><label>場地名稱</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="A 廳" /></div>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="WonderV 展演場 · A 廳" /></div>
             <div className="fld"><label>舞台形狀</label>
               <select value={stage.shape} onChange={(e) => setStage({ ...stage, shape: e.target.value })}>
                 {SHAPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}

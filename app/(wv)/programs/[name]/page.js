@@ -70,7 +70,7 @@ export default async function ProgramDetail({ params }) {
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     location: {
       "@type": "Place",
-      name: s.venue || program.venue || "Wonder V 沉浸式場域",
+      name: s.venue || program.venue || "WonderV 展演場",
       address: { "@type": "PostalAddress", addressCountry: "TW" },
     },
     description: program.intro || undefined,

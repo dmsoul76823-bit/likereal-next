@@ -141,7 +141,7 @@ export default async function WonderVHome() {
                     <div className="body">
                       <h4>{p.name}</h4>
                       <div className="meta">
-                        📍 {p.venue || "Wonder V 沉浸式場域"}
+                        📍 {p.venue || "WonderV 展演場"}
                         {p.firstTime ? ` · ${p.firstTime}` : ""}
                       </div>
                       <div className="foot">

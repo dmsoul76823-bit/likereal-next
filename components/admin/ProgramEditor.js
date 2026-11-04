@@ -219,7 +219,7 @@ export default function ProgramEditor({ group, art, venues, evlite, flash, onClo
               <input
                 value={venueText}
                 onChange={(e) => setVenueText(e.target.value)}
-                placeholder="D 廳 · 微風廣場 9F"
+                placeholder="WonderV 展演場"
               />
             </div>
 

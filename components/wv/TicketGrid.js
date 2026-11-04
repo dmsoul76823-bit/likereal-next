@@ -82,7 +82,7 @@ export default function TicketGrid({ sessions = [] }) {
                       {d ? `週${d.weekday} ` : ""}
                       {s.time} 開演{s.cat ? ` · ${s.cat}` : ""}
                     </div>
-                    <div className="venue">📍 {s.venue || "Wonder V 沉浸式場域"}</div>
+                    <div className="venue">📍 {s.venue || "WonderV 展演場"}</div>
                   </div>
                   <div className="tbuy">
                     <div className="tp">

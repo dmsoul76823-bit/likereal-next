@@ -41,7 +41,7 @@ export default function SessionList({ sessions, venues = [], programName = "" })
                 {d ? `週${d.weekday} ` : ""}
                 {s.time || "時間未定"}
               </div>
-              <div className="v">📍 {s.venue || "Wonder V 沉浸式場域"}</div>
+              <div className="v">📍 {s.venue || "WonderV 展演場"}</div>
               <div
                 className="left"
                 style={{ color: full ? "var(--rose)" : "var(--muted)" }}
