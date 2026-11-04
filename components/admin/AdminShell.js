@@ -14,6 +14,7 @@ import Settings from "./tabs/Settings";
 import HomeLayout from "./tabs/HomeLayout";
 import Members from "./tabs/Members";
 import Venues from "./tabs/Venues";
+import Affiliate from "./tabs/Affiliate";
 
 const TABS = {
   dash: Dashboard,
@@ -27,6 +28,7 @@ const TABS = {
   home: HomeLayout,
   members: Members,
   venues: Venues,
+  affiliate: Affiliate,
 };
 
 export default function AdminShell() {
