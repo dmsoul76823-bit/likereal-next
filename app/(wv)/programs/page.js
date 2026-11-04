@@ -27,7 +27,7 @@ export default async function ProgramsPage() {
           <span className="tag">ALL PROGRAMS</span>
           <h2>沉浸節目總覽</h2>
         </div>
-        <span style={{ color: "var(--muted)", fontSize: 13 }}>
+        <span style={{ color: "var(--muted)", fontSize: "var(--fs-sm)" }}>
           共 {programs.length} 個節目
         </span>
       </div>

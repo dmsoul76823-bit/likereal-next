@@ -29,7 +29,7 @@ export default async function ShopPage() {
             ))}
           </div>
         ) : (
-          <div style={{ color: "var(--muted)", fontSize: 14 }}>目前沒有上架中的商品。</div>
+          <div style={{ color: "var(--muted)", fontSize: "var(--fs-base)" }}>目前沒有上架中的商品。</div>
         )}
       </div>
     </section>

@@ -28,7 +28,7 @@ export default async function LivePage() {
             <p style={{ color: "var(--muted)", marginBottom: 18 }}>
               目前沒有直播中的節目。
             </p>
-            <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 22 }}>
+            <p style={{ color: "var(--muted)", fontSize: "var(--fs-base)", marginBottom: 22 }}>
               節目開播時會出現在這裡；後台把節目標記為「直播中」即可上架。
             </p>
             <Link href="/programs" className="btn btn-brand">

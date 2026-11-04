@@ -30,7 +30,7 @@ export default async function AiPage() {
           )}
         </div>
 
-        <p style={{ color: "var(--muted)", margin: "-14px 0 24px", fontSize: 14 }}>
+        <p style={{ color: "var(--muted)", margin: "-14px 0 24px", fontSize: "var(--fs-base)" }}>
           平台重點推薦的人氣創作者，每位都有獨特風格與完整 AI 分身體驗。
           {OM_URL ? "點卡片即進入 OnlyMate 角色頁。" : "OnlyMate 角色頁開通後即可直接點入。"}
         </p>

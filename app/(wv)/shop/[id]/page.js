@@ -96,7 +96,7 @@ export default async function ProductDetail({ params }) {
 
             <div className="panel">
               <h3 className="ph">購買方式</h3>
-              <p style={{ color: "var(--muted)", lineHeight: 1.9, fontSize: 14 }}>
+              <p style={{ color: "var(--muted)", lineHeight: 1.9, fontSize: "var(--fs-base)" }}>
                 線上購物車與金流串接中。目前可於 Wonder V 場域服務台現場購買，
                 或到場域售票現場洽詢。
               </p>

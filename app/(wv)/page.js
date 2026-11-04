@@ -146,7 +146,7 @@ export default async function WonderVHome() {
                       </div>
                       <div className="foot">
                         <div className="meta">{p.sessionCount} 個場次開放中</div>
-                        <div className="pr" style={{ fontSize: 14 }}>
+                        <div className="pr">
                           查看場次 →
                         </div>
                       </div>

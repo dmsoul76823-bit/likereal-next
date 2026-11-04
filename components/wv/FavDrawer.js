@@ -68,7 +68,7 @@ export default function FavDrawer() {
         <div className="cart-foot">
           <div
             className="tot"
-            style={{ justifyContent: "center", fontSize: 13, color: "var(--muted)", marginBottom: 12 }}
+            style={{ justifyContent: "center", fontSize: "var(--fs-sm)", color: "var(--muted)", marginBottom: 12 }}
           >
             收藏只存在這台裝置
           </div>

@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function Footer() {
   return (
     <footer style={{ marginTop: 72, borderTop: "1px solid var(--line2)", padding: "34px 0 48px" }}>
-      <div className="wrap" style={{ textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+      <div className="wrap" style={{ textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-sm)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/logo-wonderv.png"
@@ -23,7 +23,7 @@ export default function Footer() {
           <Link href="/dining">沉浸餐飲</Link>
           <Link href="/about">關於 Wonder V</Link>
         </div>
-        <p style={{ fontSize: 12, opacity: 0.75, marginTop: 14 }}>
+        <p style={{ fontSize: "var(--fs-xs)", opacity: 0.75, marginTop: 14 }}>
           © {new Date().getFullYear()} Wonder V · 沉浸式場域娛樂平台
         </p>
       </div>

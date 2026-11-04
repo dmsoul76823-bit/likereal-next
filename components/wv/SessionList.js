@@ -16,7 +16,7 @@ export default function SessionList({ sessions, venues = [], programName = "" })
 
   if (!sessions?.length) {
     return (
-      <div style={{ color: "var(--muted)", fontSize: 14, padding: "18px 0" }}>
+      <div style={{ color: "var(--muted)", fontSize: "var(--fs-base)", padding: "18px 0" }}>
         目前沒有開放中的場次，請稍後再回來看看。
       </div>
     );
@@ -58,7 +58,7 @@ export default function SessionList({ sessions, venues = [], programName = "" })
                     <small> 起</small>
                   </>
                 ) : (
-                  <small style={{ fontSize: 13 }}>{s.status || "未開賣"}</small>
+                  <small style={{ fontSize: "var(--fs-sm)" }}>{s.status || "未開賣"}</small>
                 )}
               </div>
               {full ? (

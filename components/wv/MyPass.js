@@ -126,7 +126,7 @@ export default function MyPass({ venues = [] }) {
       </div>
 
       {rows && rows.length === 0 && (
-        <div style={{ color: "var(--muted)", fontSize: 14, padding: "10px 2px" }}>
+        <div style={{ color: "var(--muted)", fontSize: "var(--fs-base)", padding: "10px 2px" }}>
           查無票券。請確認票券編號，或改用購票時填的 Email 與手機一起查詢。
         </div>
       )}
@@ -151,7 +151,7 @@ export default function MyPass({ venues = [] }) {
                 已換位（原：{p.orig_ticket || ""} {p.orig_seat_label || ""}）
               </div>
             )}
-            <div className="m" style={{ fontSize: 11, color: "var(--muted)" }}>
+            <div className="m" style={{ fontSize: "var(--fs-xs)", color: "var(--muted)" }}>
               票券編號 {p.code}　購票人 {p.buyer || ""}
             </div>
           </div>

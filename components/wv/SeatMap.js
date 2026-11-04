@@ -23,7 +23,7 @@ export default function SeatMap({ venue, zm, sold, sel, activeTier, tickets, onP
 
   if (!venue || !venue.rows || !venue.cols) {
     return (
-      <div style={{ color: "var(--muted)", fontSize: 14, padding: "20px 0" }}>
+      <div style={{ color: "var(--muted)", fontSize: "var(--fs-base)", padding: "20px 0" }}>
         這個場次還沒有設定座位圖。
       </div>
     );
