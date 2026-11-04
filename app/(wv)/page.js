@@ -97,7 +97,7 @@ export default async function WonderVHome() {
                 <h2 className="serif">正在沉浸放送</h2>
               </div>
               <Link href="/programs" className="more">
-                全部節目 →
+                看全部節目
               </Link>
             </div>
             <div className="hg hg-3">
@@ -119,7 +119,7 @@ export default async function WonderVHome() {
                 <h2 className="serif">現場沉浸門票</h2>
               </div>
               <Link href="/tickets" className="more">
-                觀看更多 →
+                看全部場次
               </Link>
             </div>
             <div className="hg hg-3">
@@ -147,7 +147,7 @@ export default async function WonderVHome() {
                       <div className="foot">
                         <div className="meta">{p.sessionCount} 個場次開放中</div>
                         <div className="pr">
-                          查看場次 →
+                          查看場次
                         </div>
                       </div>
                     </div>
@@ -188,7 +188,7 @@ export default async function WonderVHome() {
                 <h2 className="serif">裸視 3D 精選</h2>
               </div>
               <Link href="/shop" className="more">
-                觀看更多 →
+                看全部商品
               </Link>
             </div>
             <div className="hg hg-4">
@@ -210,7 +210,7 @@ export default async function WonderVHome() {
                 <h2 className="serif">儲值方案</h2>
               </div>
               <Link href="/vip" className="more">
-                全部方案 →
+                看全部方案
               </Link>
             </div>
             <div className="hg hg-2">

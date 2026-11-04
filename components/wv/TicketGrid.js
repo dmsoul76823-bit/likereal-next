@@ -94,7 +94,7 @@ export default function TicketGrid({ sessions = [] }) {
                         {full ? "售罄候補" : `剩 ${s.left} 席`}
                       </div>
                     </div>
-                    <span className="add buy-now">查看節目 →</span>
+                    <span className="add buy-now">查看節目</span>
                   </div>
                 </div>
               </Link>

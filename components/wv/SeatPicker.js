@@ -287,7 +287,7 @@ export default function SeatPicker({
                   </div>
                 </div>
                 <span className="go">
-                  {low ? "低於原票價" : out ? "—" : "選座位 →"}
+                  {low ? "低於原票價" : out ? "—" : "選座位"}
                 </span>
               </div>
             );

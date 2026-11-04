@@ -12,7 +12,7 @@ const BLOCKS = [
   ["plans", "會員儲值方案"],
 ];
 
-const emptyPromo = () => ({ title: "", sub: "", cta: "前往 →", url: "", img: "", yt: "", on: true });
+const emptyPromo = () => ({ title: "", sub: "", cta: "前往", url: "", img: "", yt: "", on: true });
 
 export default function HomeLayout({ flash }) {
   const [layout, setLayout] = useState(null);
@@ -177,7 +177,7 @@ export default function HomeLayout({ flash }) {
               <div className="fld full"><label>副標</label>
                 <input value={p.sub || ""} onChange={(e) => upd({ sub: e.target.value })} /></div>
               <div className="fld"><label>按鈕文字</label>
-                <input value={p.cta || ""} onChange={(e) => upd({ cta: e.target.value })} placeholder="前往 →" /></div>
+                <input value={p.cta || ""} onChange={(e) => upd({ cta: e.target.value })} placeholder="前往" /></div>
               <div className="fld"><label>連結（留空就不可點）</label>
                 <input value={p.url || ""} onChange={(e) => upd({ url: e.target.value })} placeholder="/live 或 https://…" /></div>
               <div className="fld full"><label>YouTube 影片 ID（可留空，會自動靜音循環）</label>

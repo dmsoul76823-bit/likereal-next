@@ -34,7 +34,7 @@ export default function PromoRow({ promos = [] }) {
             <div className="pm-cap">
               <h3 className="serif">{p.title || ""}</h3>
               {p.sub && <p>{p.sub}</p>}
-              {p.url && <span className="pm-btn">{p.cta || "前往 →"}</span>}
+              {p.url && <span className="pm-btn">{p.cta || "前往"}</span>}
             </div>
           </>
         );

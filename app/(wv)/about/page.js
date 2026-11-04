@@ -105,7 +105,7 @@ export default async function AboutPage() {
               <Link className="pc pc-link" href="/dining">
                 <div className="pi">🥂</div>
                 <h3>沉浸餐飲</h3>
-                <p>依演出主題設計的限定餐點與調飲 — 看看我們準備了什麼 →</p>
+                <p>依演出主題設計的限定餐點與調飲 — 看看我們準備了什麼</p>
               </Link>
             </div>
           </div>

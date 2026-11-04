@@ -25,7 +25,7 @@ export default async function AiPage() {
           </div>
           {OM_URL && (
             <a className="more" href={OM_URL} target="_blank" rel="noopener noreferrer">
-              進入 OnlyMate →
+              進入 OnlyMate
             </a>
           )}
         </div>
@@ -74,7 +74,7 @@ export default async function AiPage() {
                       人氣 <b>{c.hot}</b>
                     </span>
                   </div>
-                  {OM_URL && <div className="om-enter">查看角色 →</div>}
+                  {OM_URL && <div className="om-enter">查看角色</div>}
                 </div>
               </>
             );

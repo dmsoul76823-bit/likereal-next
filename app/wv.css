@@ -137,7 +137,9 @@
   .stage-stat{display:flex;gap:30px;justify-content:center;margin-top:26px;color:var(--muted);font-size:var(--fs-sm);flex-wrap:wrap}
   .stage-stat b{color:var(--brand3);font-size:var(--fs-xl);display:block;font-weight:800}
 
-  section{padding:var(--sp-3) 0;border-top:1px solid var(--line2)}
+  /* 區塊之間不再畫線：兩個區塊的留白相鄰已經是 88px，線是重複的分隔。
+     留白分隔比畫線更安靜，也讓頁面讀起來是一整篇而不是一疊方塊。 */
+  section{padding:var(--sp-3) 0}
   .sec-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:var(--sp-2);gap:16px}
   .sec-head h2{font-size:var(--fs-2xl);font-weight:800;letter-spacing:1px}
   .sec-head .tag{color:var(--brand3);letter-spacing:3px;font-size:var(--fs-xs);display:block;margin-bottom:8px}
@@ -627,7 +629,10 @@
     .sess-a .p{margin:0}
   }
   /* 品牌理念 */
-  .philo{margin-top:58px;padding-top:44px;border-top:1px solid var(--line2)}
+  /* 這條線保留：它分隔的是「節目／商品」與「品牌理念」兩種不同性質的
+     內容，不是同類區塊之間的重複分隔。間距收進級距，上下各 44 共 88，
+     與其他區塊的節奏一致。 */
+  .philo{margin-top:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--line2)}
   .philo-wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:38px;align-items:start}
   .philo-txt p{color:var(--muted);font-size:var(--fs-base);line-height:2;margin-bottom:12px}
   .slogan{margin-top:26px;padding:20px 22px;border-radius:15px;
@@ -686,7 +691,7 @@
     .pair .pr{padding-left:44px;border-left:none;border-top:1px dashed var(--line);padding-top:9px}
   }
   /* 首頁預覽區 */
-  section.hsec{padding:var(--sp-3) 0;border-top:1px solid var(--line2)}
+  section.hsec{padding:var(--sp-3) 0}
   /* 首頁網格。
      欄數是「上限」而不是固定值 —— 卡片數量由後台「首頁編排」決定，
      固定 3 欄遇到 2 張卡就會在右邊留一個洞，而後台不會警告。

@@ -101,7 +101,7 @@ export default async function ProductDetail({ params }) {
                 或到場域售票現場洽詢。
               </p>
               <Link href="/#sessions" className="btn btn-brand" style={{ width: "100%", textAlign: "center" }}>
-                查看場次 →
+                查看場次
               </Link>
             </div>
           </aside>

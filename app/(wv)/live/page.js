@@ -32,7 +32,7 @@ export default async function LivePage() {
               節目開播時會出現在這裡；後台把節目標記為「直播中」即可上架。
             </p>
             <Link href="/programs" className="btn btn-brand">
-              看看有哪些沉浸節目 →
+              看看有哪些沉浸節目
             </Link>
           </div>
         ) : (
@@ -64,7 +64,7 @@ export default async function LivePage() {
                     {l.intro && <div className="tags">{l.intro}</div>}
                     <div className="row">
                       <span className="chip">{l.name}</span>
-                      <span className="add">進入 →</span>
+                      <span className="add">進入直播</span>
                     </div>
                   </div>
                 </>

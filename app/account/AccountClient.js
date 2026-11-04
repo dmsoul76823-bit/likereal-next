@@ -336,7 +336,7 @@ export default function AccountClient() {
                   </span>
                 </div>
                 <div style={{ marginTop: 8, fontSize: 11, color: C.accent, textAlign: "right" }}>
-                  到「我的票券」查看 →
+                  到「我的票券」查看
                 </div>
               </Link>
             ))}
