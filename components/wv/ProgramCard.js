@@ -51,9 +51,8 @@ export default function ProgramCard({ program }) {
               "場次準備中"
             )}
           </div>
-          <div className="pr" style={{ fontSize: 14 }}>
-            查看場次
-          </div>
+          {/* 字級交給 .pgcard .pr（--fs-base），不要用 inline style 蓋掉設計系統 */}
+          <div className="pr">查看場次</div>
         </div>
       </div>
     </Link>
