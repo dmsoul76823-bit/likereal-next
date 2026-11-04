@@ -726,9 +726,35 @@
     .hg{gap:14px}
     section.hsec{padding:32px 0}
   }
-  /* 手機版：全部一排一個 */
+  /* 手機版：節目卡與推廣位一排一個（它們是橫式圖＋多行文字，
+     擠成兩欄會兩邊都讀不清）；商品卡一排兩個 —— 縮圖是正方形、
+     文字短，兩欄仍然看得清，而且一排一個會讓首頁拖得很長。 */
   @media(max-width:640px){
-    .hg-2,.hg-3,.hg-4{grid-template-columns:1fr!important}
+    .hg-2,.hg-3{grid-template-columns:1fr!important}
+    /* .hg-4 首頁商品區、.g4 商品總覽與直播大廳 —— 都是正方或直式縮圖
+       配短文字，兩欄仍看得清。.g4 在下面的「手機優化」區塊原本被壓成
+       一欄，已從那條移除，否則那條在後面會贏。 */
+    .hg-4,.g4{grid-template-columns:repeat(2,1fr)!important}
+
+    /* 商品卡的兩欄調整。以 .prod-body 為鍵而不是綁網格 class，
+       首頁與 /shop 才共用同一套。
+       兩欄後卡片內只剩約 132px（170 減左右 padding），而金額列原本是
+       「劃線原價 48 ＋ 價格 96 ＋ 按鈕 80 ≈ 224px」橫排，塞不下，
+       改成直排：原價自己一行，價格降到 18px，按鈕整列寬。
+       margin-top:auto 把金額列壓到卡片底部 —— 否則有折扣的卡多一行
+       原價、標題又有 1 行和 2 行之分，同排按鈕會差 9–20px（實測）。 */
+    .card:has(.prod-body){display:flex;flex-direction:column}
+    .prod-body{padding:13px;flex:1;display:flex;flex-direction:column}
+    .prod-body .buy{flex-direction:column;align-items:stretch;gap:9px;margin-top:auto}
+    .prod-body .price{font-size:var(--fs-lg)}
+    .prod-body .price s{display:block;margin:0 0 2px}
+    .prod-body .add{text-align:center;padding:9px 10px}
+
+    /* 直播卡（.g4 也用它）同樣要貼底，否則標題 1 行和 2 行的卡片
+       「進入 →」會差 16px 和 80px（實測）。 */
+    .card:has(.prog-body){display:flex;flex-direction:column}
+    .prog-body{flex:1;display:flex;flex-direction:column}
+    .prog-body .row{margin-top:auto}
   }
   /* 購票表單 */
   .bform{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -883,7 +909,7 @@
     .play-btn{width:64px;height:64px;font-size:22px}
     .stage-stat{gap:18px;margin-top:20px}.stage-stat b{font-size:17px}
     /* 手機版：各分區頁面也一律一排一個 */
-    .g2,.g3,.g4{grid-template-columns:1fr!important}
+    .g2,.g3{grid-template-columns:1fr!important}  /* .g4 改為兩欄，見上方 */
     .om-grid{grid-template-columns:1fr!important}
     .plans{grid-template-columns:1fr}
     .ticket{padding:12px;border-radius:16px}
