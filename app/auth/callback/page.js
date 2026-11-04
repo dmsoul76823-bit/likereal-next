@@ -85,7 +85,7 @@ export default function AuthCallback() {
           完成會員資料
         </div>
         <div style={{ fontSize: 12, color: C.sub, marginBottom: 20 }}>
-          歡迎加入 Like Real，請填寫您的本名以完成註冊。
+          歡迎加入 Wonder V，請填寫您的本名以完成註冊。
         </div>
         <div style={{ marginBottom: 12 }}>
           <div

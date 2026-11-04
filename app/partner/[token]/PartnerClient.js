@@ -57,7 +57,7 @@ export default function PartnerClient({ token }) {
       >
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
           <div style={{ fontSize: 11, opacity: 0.5, letterSpacing: 2, marginBottom: 6 }}>
-            LIKE REAL — 推廣夥伴
+            WONDER V — 推廣夥伴
           </div>
           <div style={{ fontSize: 24, fontWeight: 300 }}>{data.name}</div>
           <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>
@@ -129,23 +129,27 @@ export default function PartnerClient({ token }) {
           />
 
           {/*
-            節目推廣連結。event_slug 來自 get_affiliate_dashboard RPC，
-            而線上 events 資料表沒有 slug 欄位 —— 所以這個 filter 目前
-            會把所有項目濾掉，這一區實際上不會長出任何連結。
-            要讓它真的運作，得改 get_affiliate_dashboard 回傳 Wonder V
-            的節目名稱（對應 /programs/[name]）。路徑這裡先改對。
+            個別節目／商品的推廣連結。target_type 決定路徑：
+            program → /programs/<節目名稱>，product → /shop/<商品 id>。
+            target_type='all' 的規則不列在這裡，因為它對應的就是
+            上面那條網站首頁連結。
           */}
           {(data.rules || [])
-            .filter((r) => r.event_slug)
+            .filter((r) => r.target_type !== "all" && r.target_key)
             .map((r) => {
-              const link = `${base}/programs/${encodeURIComponent(r.event_slug)}?ref=${data.code}`;
+              const path =
+                r.target_type === "product"
+                  ? `/shop/${encodeURIComponent(r.target_key)}`
+                  : `/programs/${encodeURIComponent(r.target_key)}`;
+              const link = `${base}${path}?ref=${data.code}`;
+              const k = `${r.target_type}:${r.target_key}`;
               return (
                 <LinkRow
-                  key={r.event_slug}
-                  label={r.event_title}
+                  key={k}
+                  label={r.label || r.target_key}
                   url={link}
-                  copied={copied === r.event_slug}
-                  onCopy={() => copy(link, r.event_slug)}
+                  copied={copied === k}
+                  onCopy={() => copy(link, k)}
                 />
               );
             })}
@@ -169,7 +173,7 @@ export default function PartnerClient({ token }) {
                 gap: 12,
               }}
             >
-              <span style={{ fontSize: 13, fontWeight: 500 }}>{r.event_title}</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{r.label || r.target_key || "全站通用"}</span>
               <span
                 style={{
                   fontSize: 13,
