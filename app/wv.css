@@ -479,7 +479,7 @@
   .mp-row label{font-size:var(--fs-xs);color:var(--muted)}
   .mp-row input{background:#100c1c;border:1px solid var(--line2);color:var(--text);
     padding:11px 13px;border-radius:11px;font-size:var(--fs-input);width:100%}
-  .mp-row input:focus{outline:none;border-color:var(--brand)}
+  .mp-row input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
   .mp-or{color:var(--muted);font-size:var(--fs-xs);padding-bottom:12px}
   .mp-row .btn{padding:11px 22px}
   .mp-note{margin-top:14px;font-size:var(--fs-sm);color:var(--muted);line-height:1.8;
@@ -727,7 +727,8 @@
   .bf label i{color:var(--rose);font-style:normal}
   .bf input,.bf select{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:11px;
     padding:12px 14px;color:var(--text);font-size:var(--fs-input);outline:none;font-family:inherit}
-  .bf input:focus,.bf select:focus{border-color:var(--brand)}
+  /* 焦點指示與登入表單一致：只靠 1px 框線變色太細，鍵盤使用者不好追。 */
+  .bf input:focus,.bf select:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
   .bf input.bad{border-color:var(--rose)}
   .bf small{display:block;color:var(--muted);font-size:var(--fs-xs);margin-top:5px}
   .binv{display:flex;gap:10px;flex-wrap:wrap}
