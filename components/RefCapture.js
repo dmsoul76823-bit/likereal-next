@@ -93,13 +93,27 @@ export default function RefCapture() {
         }
       } catch (e) {}
 
-      // 記錄點擊
+      // 記錄點擊。順便記下是從哪個節目／商品頁進來的，
+      // 這樣後台才看得出夥伴的流量集中在哪裡。
       try {
+        const seg = window.location.pathname.split("/").filter(Boolean);
+        let type = null;
+        let key = null;
+        if (seg[0] === "programs" && seg[1]) {
+          type = "program";
+          key = decodeURIComponent(seg[1]);
+        } else if (seg[0] === "shop" && seg[1]) {
+          type = "product";
+          key = seg[1];
+        }
         await supabase.rpc("record_affiliate_click", {
           p_code: data.code,
-          p_event_id: null,
+          p_target_type: type,
+          p_target_key: key,
         });
-      } catch (e) {}
+      } catch (e) {
+        /* 點擊紀錄失敗不影響推薦碼的儲存 */
+      }
     })();
   }, [params]);
 

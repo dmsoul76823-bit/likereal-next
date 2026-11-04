@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import SeatMap from "./SeatMap";
 import TicketResult from "./TicketResult";
+import { getRef } from "@/components/RefCapture";
 import {
   ZONE_COLORS,
   SEAT_MAX,
@@ -123,7 +124,7 @@ export default function SeatPicker({
     return { type: "personal", carrier: form.carrier.trim() };
   }
 
-  // ── 送出：呼叫 buy_seats，資料庫端原子操作，不會超賣 ──
+  // ── 送出：資料庫端原子操作，不會超賣 ──
   async function submit() {
     if (!validate()) return;
     setBusy(true);
@@ -143,13 +144,17 @@ export default function SeatPicker({
         });
       });
 
-      const { data, error } = await supabase.rpc("buy_seats", {
+      // buy_seats_ref 是 buy_seats 的包裝：先賣票，再記分潤歸因。
+      // 它不修改 buy_seats 本身，歸因失敗也只寫 warning 不會讓訂單失敗。
+      // 真的出問題，把這裡改回 "buy_seats" 並拿掉 p_ref 就完全復原。
+      const { data, error } = await supabase.rpc("buy_seats_ref", {
         p_event_id: Number(session.id),
         p_seats: payload,
         p_name: form.name.trim(),
         p_phone: form.phone.trim(),
         p_email: form.email.trim(),
         p_invoice: invoiceData(),
+        p_ref: getRef(),
       });
       if (error) throw error;
 
