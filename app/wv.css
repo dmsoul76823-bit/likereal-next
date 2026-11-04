@@ -47,6 +47,18 @@
     --sp-1:22px;
     --sp-2:28px;
     --sp-3:44px;
+
+    /* ── 白字專用色（2026-11-04 導入）──────────────────
+       白字壓在品牌色上原本不合格：.btn-brand 2.22:1、.avatar 2.37:1、
+       .live-tag 3.21:1，WCAG AA 一般文字要 4.5:1。
+       刻意跟 --brand2 / --rose / --live 分開，因為那三個也當「文字色」
+       用（深底上的亮字），整個調暗會讓那些字更難讀。
+       數值的算法：同色相、只降明度，降到白字剛好達 4.5:1。
+       ⚠️ 品牌色之後若定調，這四個要一起重算，不能只改 --brand。 */
+    --on-brand-a:#6d52ab;  /* 漸層深端，白字 6.10:1 */
+    --on-brand-b:#8264c6;  /* 漸層亮端，白字 4.58:1 */
+    --on-rose:#b84f90;     /* 粉色系亮端，白字 4.61:1 */
+    --on-live:#e8002a;     /* LIVE 標記，白字 4.70:1 */
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:
@@ -84,7 +96,7 @@
   .nav .spacer{flex:1}
   .wallet{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:var(--fs-sm);background:var(--brand-soft);cursor:pointer}
   .wallet b{color:var(--brand3)}
-  .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--rose));display:grid;place-items:center;font-weight:700;color:#fff;cursor:pointer}
+  .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--on-brand-a),var(--on-rose));display:grid;place-items:center;font-weight:700;color:#fff;cursor:pointer}
   .vip{font-size:var(--fs-xs);letter-spacing:1px;border:1px solid var(--line);color:var(--brand3);padding:2px 8px;border-radius:999px}
 
   /* 權重要比 .wrap 高：主視覺的元素是 class="wrap stage"，而手機區塊裡
@@ -102,7 +114,7 @@
   .player .hero-ov{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(10,6,18,.34),rgba(10,6,18,.12) 42%,rgba(10,6,18,.92))}
   .player .depth{position:absolute;inset:0;background:
     repeating-linear-gradient(115deg,rgba(255,255,255,.03) 0 2px,transparent 2px 26px);mix-blend-mode:screen;opacity:.6}
-  .player .live-badge{position:absolute;top:20px;left:20px;display:flex;align-items:center;gap:7px;background:var(--live);
+  .player .live-badge{position:absolute;top:20px;left:20px;display:flex;align-items:center;gap:7px;background:var(--on-live);
     color:#fff;font-size:var(--fs-xs);font-weight:700;padding:6px 13px;border-radius:9px;letter-spacing:1px;z-index:3}
   .pulse{width:8px;height:8px;background:#fff;border-radius:50%;animation:pulse 1.4s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
@@ -118,7 +130,7 @@
   .player .caption p{color:var(--muted);font-size:var(--fs-base);margin-top:4px}
   .stage-cta{display:flex;gap:14px;justify-content:center;margin-top:22px;flex-wrap:wrap}
   .btn{border:none;cursor:pointer;font-family:inherit;font-size:var(--fs-base);padding:13px 26px;border-radius:12px;transition:.2s;font-weight:600}
-  .btn-brand{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;box-shadow:0 10px 30px rgba(139,111,202,.4)}
+  .btn-brand{background:linear-gradient(135deg,var(--on-brand-a),var(--on-brand-b));color:#fff;box-shadow:0 10px 30px rgba(139,111,202,.4)}
   .btn-brand:hover{transform:translateY(-2px)}
   .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
   .btn-ghost:hover{border-color:var(--brand);color:var(--brand3)}
@@ -162,7 +174,7 @@
 
   .prog-thumb{aspect-ratio:16/10;position:relative;display:grid;place-items:center;font-size:58px;
     background:radial-gradient(300px 200px at 60% 30%,rgba(224,143,192,.28),transparent 60%),linear-gradient(155deg,#2a1f45,#160f26)}
-  .prog-thumb .lb{position:absolute;top:10px;left:10px;background:var(--live);font-size:var(--fs-xs);font-weight:700;padding:3px 8px;border-radius:6px;display:flex;gap:5px;align-items:center}
+  .prog-thumb .lb{position:absolute;top:10px;left:10px;background:var(--on-live);font-size:var(--fs-xs);font-weight:700;padding:3px 8px;border-radius:6px;display:flex;gap:5px;align-items:center}
   .prog-thumb .imm{position:absolute;top:10px;right:10px;background:var(--brand-soft);border:1px solid var(--line);color:var(--brand3);font-size:var(--fs-xs);padding:3px 8px;border-radius:6px}
   .prog-thumb .pv{position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,.5);font-size:var(--fs-xs);padding:3px 8px;border-radius:6px}
   .prog-body{padding:15px}
@@ -171,7 +183,7 @@
   .prog-body .row{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
   .chip{font-size:var(--fs-xs);color:var(--brand3);border:1px solid var(--line);padding:3px 9px;border-radius:999px}
   .add{background:var(--brand-soft);border:1px solid var(--line);color:var(--brand3);border-radius:10px;padding:8px 14px;font-size:var(--fs-sm);cursor:pointer;font-family:inherit;font-weight:600;transition:.2s}
-  .add:hover{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff}
+  .add:hover{background:linear-gradient(135deg,var(--on-brand-a),var(--on-brand-b));color:#fff}
 
 
   /* 售票卡：直式海報（主視覺置頂滿版，文字在下方全寬） */
@@ -215,7 +227,7 @@
   .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
   .plan{border:1px solid var(--line2);border-radius:20px;padding:28px;background:linear-gradient(180deg,var(--card2),var(--card));text-align:center;position:relative}
   .plan.feat{border-color:var(--line);background:linear-gradient(180deg,rgba(139,111,202,.14),var(--card))}
-  .plan.feat::before{content:"最受歡迎";position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font-size:var(--fs-xs);font-weight:700;padding:4px 14px;border-radius:999px}
+  .plan.feat::before{content:"最受歡迎";position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--on-brand-a),var(--on-brand-b));color:#fff;font-size:var(--fs-xs);font-weight:700;padding:4px 14px;border-radius:999px}
   .plan h3{font-size:var(--fs-lg);letter-spacing:1px}
   .plan .amt{font-size:var(--fs-3xl);font-weight:800;margin:14px 0 4px}
   .plan .amt small{font-size:var(--fs-sm);color:var(--muted);font-weight:400}
@@ -238,11 +250,11 @@
   .cart-foot{padding:20px;border-top:1px solid var(--line2)}
   .cart-foot .tot{display:flex;justify-content:space-between;margin-bottom:14px;font-size:var(--fs-base)}
   .cart-foot .tot b{color:var(--brand3);font-size:var(--fs-xl)}
-  .cart-btn{width:100%;background:linear-gradient(135deg,var(--brand),var(--brand2));border:none;padding:14px;border-radius:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;font-size:var(--fs-base)}
+  .cart-btn{width:100%;background:linear-gradient(135deg,var(--on-brand-a),var(--on-brand-b));border:none;padding:14px;border-radius:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;font-size:var(--fs-base)}
   .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:250;opacity:0;pointer-events:none;transition:.3s}
   .backdrop.show{opacity:1;pointer-events:auto}
   .cart-fab{position:fixed;bottom:22px;right:22px;z-index:120;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand2));display:grid;place-items:center;font-size:24px;cursor:pointer;box-shadow:0 10px 30px rgba(139,111,202,.5);border:none}
-  .cart-fab .count{position:absolute;top:-4px;right:-4px;background:var(--live);color:#fff;font-size:var(--fs-xs);font-weight:700;width:24px;height:24px;border-radius:50%;display:grid;place-items:center}
+  .cart-fab .count{position:absolute;top:-4px;right:-4px;background:var(--on-live);color:#fff;font-size:var(--fs-xs);font-weight:700;width:24px;height:24px;border-radius:50%;display:grid;place-items:center}
 
   footer{border-top:1px solid var(--line2);margin-top:calc(var(--sp-3) * 2);padding:var(--sp-3) 0;
     color:var(--muted);font-size:var(--fs-sm);text-align:center}
@@ -370,7 +382,7 @@
     background:rgba(8,5,16,.6);border:1px solid rgba(255,255,255,.18);color:#fff;font-size:15px;
     cursor:pointer;display:grid;place-items:center;backdrop-filter:blur(6px);transition:.18s;padding:0;line-height:1}
   .fav:hover{background:rgba(224,143,192,.35);border-color:var(--rose);transform:scale(1.12)}
-  .fav.on{background:linear-gradient(135deg,var(--rose),var(--brand));border-color:#fff;color:#fff}
+  .fav.on{background:linear-gradient(135deg,var(--on-rose),var(--on-brand-a));border-color:#fff;color:#fff}
   .prod-thumb .fav{top:10px;right:10px}
   .fav-row{display:flex;gap:12px;align-items:center}
   .fav-row .ic{width:46px;height:58px;border-radius:9px;background:#0c0a14 center/cover no-repeat;flex:none;border:1px solid var(--line2)}
@@ -378,7 +390,7 @@
   .fav-row .t b{font-size:var(--fs-sm);display:block}
   .fav-row .t span{color:var(--muted);font-size:var(--fs-xs)}
   .fav-row .x{cursor:pointer;color:var(--muted);font-size:var(--fs-base)}
-  .add.buy-now{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-color:transparent}
+  .add.buy-now{background:linear-gradient(135deg,var(--on-brand-a),var(--on-brand-b));color:#fff;border-color:transparent}
   .add.buy-now:hover{filter:brightness(1.12)}
   .prog-body .row .add{padding:9px 10px;font-size:var(--fs-sm)}
   /* 關於 Wonder V */
@@ -464,7 +476,7 @@
   .pm-cap{position:absolute;left:0;right:0;bottom:0;padding:24px 26px;z-index:2}
   .pm-cap h3{font-size:var(--fs-xl);line-height:1.3;margin-bottom:6px}
   .pm-cap p{color:rgba(255,255,255,.72);font-size:var(--fs-base);margin-bottom:14px}
-  .pm-btn{display:inline-block;background:linear-gradient(135deg,var(--brand),var(--brand2));
+  .pm-btn{display:inline-block;background:linear-gradient(135deg,var(--on-brand-a),var(--on-brand-b));
     color:#fff;font-size:var(--fs-sm);font-weight:700;padding:9px 20px;border-radius:999px}
   @media(max-width:880px){
     .promo-grid{grid-template-columns:1fr;gap:16px}
@@ -531,7 +543,7 @@
   .ev-title .chips span{background:var(--brand-soft);border:1px solid var(--line);color:var(--brand3);
     border-radius:999px;padding:6px 14px;font-size:var(--fs-xs)}
   .live-tag{position:absolute;top:16px;left:16px;z-index:5;display:flex;align-items:center;gap:7px;
-    background:var(--live);color:#fff;font-size:var(--fs-xs);font-weight:700;padding:7px 14px;border-radius:9px;
+    background:var(--on-live);color:#fff;font-size:var(--fs-xs);font-weight:700;padding:7px 14px;border-radius:9px;
     letter-spacing:1px;box-shadow:0 6px 18px rgba(255,77,94,.45)}
   .live-tag.sm{top:11px;left:11px;padding:5px 11px}
   .play-ic{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:52px;height:52px;
@@ -809,7 +821,7 @@
   .admin-head .x{cursor:pointer;color:var(--muted);font-size:22px}
   .admin-tools{display:flex;gap:8px;padding:14px 20px;border-bottom:1px solid var(--line2);flex-wrap:wrap}
   .ad-btn{background:var(--brand-soft);border:1px solid var(--line);color:var(--brand3);border-radius:9px;padding:8px 12px;font-size:12px;cursor:pointer;font-family:inherit}
-  .ad-btn:hover{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff}
+  .ad-btn:hover{background:linear-gradient(135deg,var(--on-brand-a),var(--on-brand-b));color:#fff}
   .ad-btn.danger{color:#ff9db0;border-color:rgba(255,80,110,.4)}
   .admin-list{flex:1;overflow-y:auto;padding:14px 20px;display:flex;flex-direction:column;gap:10px}
   .ad-cat{color:var(--brand3);font-size:11px;letter-spacing:2px;margin:10px 2px 2px}
@@ -918,7 +930,7 @@
     border:1px solid var(--line2);border-radius:999px;padding:4px}
   .lg-tabs button{flex:1;padding:9px 0;border:none;border-radius:999px;background:none;
     color:var(--muted);font-family:inherit;font-size:var(--fs-base);cursor:pointer;transition:.2s}
-  .lg-tabs button.on{background:linear-gradient(135deg,var(--brand),var(--brand2));
+  .lg-tabs button.on{background:linear-gradient(135deg,var(--on-brand-a),var(--on-brand-b));
     color:#fff;font-weight:700;box-shadow:0 6px 18px rgba(139,111,202,.35)}
   .lg-fld{margin-bottom:14px}
   .lg-fld label{display:block;font-size:var(--fs-xs);color:var(--muted);margin-bottom:6px}
